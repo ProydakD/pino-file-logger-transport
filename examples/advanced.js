@@ -8,6 +8,13 @@ const transport = pino.transport({
     logDirectory: './logs',
     filename: 'application',
     retentionDays: 7,
+    archiveFormat: 'zip',
+    compressionLevel: 6,
+    bufferSize: 100,
+    flushInterval: 1000,
+    level: 'info',
+    cleanupOnRotation: true,
+    archiveOnRotation: false,
   },
 });
 

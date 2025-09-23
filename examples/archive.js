@@ -5,9 +5,13 @@ const pino = require('pino');
 const transport = pino.transport({
   target: '../dist/index.js',
   options: {
-    logDirectory: './logs/2',
+    logDirectory: './logs',
     filename: 'archive-test',
     retentionDays: 3,
+    archiveFormat: 'gzip',
+    compressionLevel: 6,
+    archiveDirectory: './archives',
+    archiveOnRotation: true,
   },
 });
 

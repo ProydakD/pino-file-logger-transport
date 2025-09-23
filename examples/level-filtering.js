@@ -9,6 +9,9 @@ const transport = pino.transport({
     filename: 'level-test',
     retentionDays: 3,
     level: 'warn', // Only log warnings and above
+    bufferSize: 50,
+    flushInterval: 500,
+    cleanupOnRotation: true,
   },
 });
 
