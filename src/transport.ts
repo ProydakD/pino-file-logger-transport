@@ -50,6 +50,24 @@ export interface FileTransportOptions {
    * @default 'info'
    */
   level?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+
+  /**
+   * Archive format for old log files
+   * @default 'zip'
+   */
+  archiveFormat?: 'zip' | 'gzip' | 'tar' | 'none';
+
+  /**
+   * Compression level for archives (0-9, where 9 is maximum compression)
+   * @default 6
+   */
+  compressionLevel?: number;
+
+  /**
+   * Directory for storing archives (if different from log directory)
+   * @default same as logDirectory
+   */
+  archiveDirectory?: string;
 }
 
 /**
@@ -243,11 +261,17 @@ function scheduleFlush(
  * @param logDirectory - Directory containing log files
  * @param filename - Base filename for log files
  * @param currentDate - Current date in YYYY-MM-DD format
+ * @param archiveFormat - Archive format (zip, gzip, tar, none)
+ * @param compressionLevel - Compression level (0-9)
+ * @param archiveDirectory - Directory for storing archives
  */
 async function archiveLogFiles(
   logDirectory: string,
   filename: string,
-  currentDate: string
+  currentDate: string,
+  archiveFormat: 'zip' | 'gzip' | 'tar' | 'none' = 'zip',
+  compressionLevel: number = 6,
+  archiveDirectory?: string,
 ): Promise<void> {
   try {
     // Check if log directory exists
@@ -269,7 +293,7 @@ async function archiveLogFiles(
 
     // Archive each log file
     for (const logFile of logFiles) {
-      await archiveSingleLogFile(logDirectory, logFile);
+      await archiveSingleLogFile(logDirectory, logFile, archiveFormat, compressionLevel, archiveDirectory);
     }
   } catch (error) {
     console.error('Error archiving log files:', error);
@@ -281,20 +305,61 @@ async function archiveLogFiles(
  *
  * @param logDirectory - Directory containing log files
  * @param logFile - Name of the log file to archive
+ * @param archiveFormat - Archive format (zip, gzip, tar, none)
+ * @param compressionLevel - Compression level (0-9)
+ * @param archiveDirectory - Directory for storing archives
  */
 async function archiveSingleLogFile(
   logDirectory: string,
-  logFile: string
+  logFile: string,
+  archiveFormat: 'zip' | 'gzip' | 'tar' | 'none' = 'zip',
+  compressionLevel: number = 6,
+  archiveDirectory?: string,
 ): Promise<void> {
+  // If archive format is 'none', just remove the file
+  if (archiveFormat === 'none') {
+    try {
+      const logFilePath = join(logDirectory, logFile);
+      unlinkSync(logFilePath);
+      return;
+    } catch (error) {
+      console.error(`Error removing file ${logFile}:`, error);
+      return;
+    }
+  }
+
   const logFilePath = join(logDirectory, logFile);
-  const archivePath = logFilePath.replace(/\.log$/, '.zip');
+  
+  // Determine archive directory and path
+  const targetArchiveDirectory = archiveDirectory || logDirectory;
+  const archiveExtension = getArchiveExtension(archiveFormat);
+  const archivePath = join(targetArchiveDirectory, logFile.replace(/\.log$/, archiveExtension));
 
   try {
-    // Create archive
+    // Create archive based on format
     const output = createWriteStream(archivePath);
-    const archive = archiver('zip', {
-      zlib: { level: 9 }, // Sets the compression level
-    });
+    let archive: archiver.Archiver;
+
+    switch (archiveFormat) {
+      case 'zip':
+        archive = archiver('zip', {
+          zlib: { level: compressionLevel },
+        });
+        break;
+      case 'gzip':
+        archive = archiver('tar', {
+          gzip: true,
+          gzipOptions: { level: compressionLevel },
+        });
+        break;
+      case 'tar':
+        archive = archiver('tar', {
+          zlib: { level: compressionLevel > 0 ? compressionLevel : 0 },
+        });
+        break;
+      default:
+        throw new Error(`Unsupported archive format: ${archiveFormat}`);
+    }
 
     // Pipe archive data to the file
     archive.pipe(output);
@@ -316,6 +381,22 @@ async function archiveSingleLogFile(
     }
   } catch (error) {
     console.error(`Error archiving file ${logFile}:`, error);
+  }
+}
+
+/**
+ * Gets the archive file extension based on format
+ *
+ * @param archiveFormat - Archive format
+ * @returns Archive file extension
+ */
+function getArchiveExtension(archiveFormat: 'zip' | 'gzip' | 'tar' | 'none'): string {
+  switch (archiveFormat) {
+    case 'zip': return '.zip';
+    case 'gzip': return '.tar.gz';
+    case 'tar': return '.tar';
+    case 'none': return '';
+    default: return '.zip';
   }
 }
 
@@ -369,6 +450,9 @@ export default function fileTransport(options: FileTransportOptions) {
     bufferSize = 100,
     flushInterval = 1000,
     level = 'info',
+    archiveFormat = 'zip',
+    compressionLevel = 6,
+    archiveDirectory,
   } = options;
 
   try {
@@ -465,7 +549,14 @@ export default function fileTransport(options: FileTransportOptions) {
           );
 
           // Archive all log files in the directory
-          await archiveLogFiles(logDirectory, filename, getCurrentDate());
+          await archiveLogFiles(
+            logDirectory, 
+            filename, 
+            getCurrentDate(),
+            archiveFormat,
+            compressionLevel,
+            archiveDirectory,
+          );
         } catch (error) {
           console.error('Error closing transport:', error);
         }
@@ -501,7 +592,10 @@ function filterRelevantFiles(files: string[], filename: string): string[] {
   return files.filter(
     (file) =>
       file.startsWith(filename) &&
-      (file.endsWith('.log') || file.endsWith('.zip')),
+      (file.endsWith('.log') || 
+       file.endsWith('.zip') || 
+       file.endsWith('.tar.gz') || 
+       file.endsWith('.tar')),
   );
 }
 
@@ -512,7 +606,8 @@ function filterRelevantFiles(files: string[], filename: string): string[] {
  * @returns Date extracted from filename or null if not found
  */
 function extractDateFromFilename(filename: string): Date | null {
-  const dateMatch = filename.match(/-(\d{4}-\d{2}-\d{2})\.(log|zip)$/);
+  // Match date pattern for various file extensions
+  const dateMatch = filename.match(/-(\d{4}-\d{2}-\d{2})\.(log|zip|tar\.gz|tar)$/);
   if (dateMatch) {
     return new Date(dateMatch[1]);
   }
