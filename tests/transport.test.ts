@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fileTransport from '../src/transport';
 import { join } from 'path';
-import { existsSync, mkdirSync, rmSync, readdirSync } from 'fs';
+import {
+  existsSync,
+  mkdirSync,
+  rmSync,
+  readdirSync,
+  writeFileSync,
+  unlinkSync,
+} from 'fs';
 
 describe('File Transport', () => {
   const testDir = join(__dirname, 'test-logs');
@@ -114,5 +121,55 @@ describe('File Transport', () => {
     const date = new Date();
     const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     expect(files).toContain(`${filename}-${dateString}.log`);
+  });
+
+  it('should archive old log files on close', async () => {
+    const filename = 'archive-test';
+
+    // Create a mock previous log file
+    const testDate = '2025-09-22';
+    const previousLogFile = join(testDir, `${filename}-${testDate}.log`);
+    writeFileSync(previousLogFile, 'test content for archiving');
+
+    // Create transport
+    const transport = fileTransport({
+      logDirectory: testDir,
+      filename,
+    });
+
+    // Write a log message to create today's file
+    transport.write(JSON.stringify({ msg: 'test log' }) + '\n');
+
+    // End transport to trigger archiving
+    transport.end();
+
+    // Wait for archiving to complete
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // Check that zip file was created
+    const files = readdirSync(testDir);
+    const zipFileExists = files.some(
+      (file) => file === `${filename}-${testDate}.zip`,
+    );
+    expect(zipFileExists).toBe(true);
+
+    // Verify the zip file is not empty
+    const zipFilePath = join(testDir, `${filename}-${testDate}.zip`);
+    const stats = { size: 0 };
+    try {
+      const { statSync } = await import('fs');
+      Object.assign(stats, statSync(zipFilePath));
+    } catch {
+      // If we can't get stats, we'll just skip the size check
+    }
+    expect(stats.size).toBeGreaterThan(0);
+
+    // Clean up
+    files.forEach((file) => {
+      const fullPath = join(testDir, file);
+      if (existsSync(fullPath)) {
+        unlinkSync(fullPath);
+      }
+    });
   });
 });

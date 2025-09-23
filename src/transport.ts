@@ -6,8 +6,9 @@
 
 import build from 'pino-abstract-transport';
 import { createWriteStream, WriteStream } from 'fs';
-import { mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync, unlinkSync, readdirSync } from 'fs';
 import { join } from 'path';
+import archiver from 'archiver';
 
 export interface FileTransportOptions {
   /**
@@ -71,7 +72,10 @@ export default function fileTransport(options: FileTransportOptions) {
           );
 
           // Create new stream with new date
-          const newLogFilePath = join(logDirectory, `${filename}-${currentDate}.log`);
+          const newLogFilePath = join(
+            logDirectory,
+            `${filename}-${currentDate}.log`,
+          );
           stream = createWriteStream(newLogFilePath, { flags: 'a' });
           lastDate = currentDate;
         }
@@ -93,6 +97,47 @@ export default function fileTransport(options: FileTransportOptions) {
         await new Promise((resolve) =>
           stream.once('finish', () => resolve(undefined)),
         );
+
+        // Archive old log files (files with different dates)
+        const currentDate = getCurrentDate();
+        const files = readdirSync(logDirectory);
+
+        for (const file of files) {
+          // Check if it's a log file with our filename pattern but not today's file
+          if (file.startsWith(`${filename}-`) && file.endsWith('.log')) {
+            const fileDate = file.substring(
+              filename.length + 1,
+              file.length - 4,
+            ); // Extract date part
+            if (fileDate !== currentDate) {
+              const filePath = join(logDirectory, file);
+              const archivePath = filePath.replace(/\.log$/, '.zip');
+
+              try {
+                // Create archive
+                const output = createWriteStream(archivePath);
+                const archive = archiver('zip', {
+                  zlib: { level: 9 }, // Sets the compression level
+                });
+
+                // Pipe archive data to the file
+                archive.pipe(output);
+
+                // Append file to archive
+                const fileName = file;
+                archive.file(filePath, { name: fileName });
+
+                // Finalize the archive
+                await archive.finalize();
+
+                // Remove original file after archiving
+                unlinkSync(filePath);
+              } catch (error) {
+                console.error('Error archiving file:', error);
+              }
+            }
+          }
+        }
       },
     },
   );
