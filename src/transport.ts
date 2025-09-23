@@ -68,6 +68,18 @@ export interface FileTransportOptions {
    * @default same as logDirectory
    */
   archiveDirectory?: string;
+
+  /**
+   * Whether to perform cleanup and archiving on date rotation
+   * @default true
+   */
+  cleanupOnRotation?: boolean;
+
+  /**
+   * Whether to archive files on date rotation
+   * @default false
+   */
+  archiveOnRotation?: boolean;
 }
 
 /**
@@ -400,20 +412,17 @@ function getArchiveExtension(archiveFormat: 'zip' | 'gzip' | 'tar' | 'none'): st
   }
 }
 
-/**
- * Rotates the log file when date changes
- *
- * @param stream - Current write stream
- * @param logDirectory - Directory containing log files
- * @param filename - Base filename for log files
- * @param currentDate - Current date in YYYY-MM-DD format
- * @returns New write stream
- */
 async function rotateLogFile(
   stream: Writable,
   logDirectory: string,
   filename: string,
-  currentDate: string
+  currentDate: string,
+  retentionDays: number,
+  archiveFormat: 'zip' | 'gzip' | 'tar' | 'none' = 'zip',
+  compressionLevel: number = 6,
+  archiveDirectory?: string,
+  cleanupOnRotation: boolean = true,
+  archiveOnRotation: boolean = false,
 ): Promise<Writable> {
   try {
     // Close current stream
@@ -423,6 +432,23 @@ async function rotateLogFile(
     await new Promise((resolve) =>
       stream.once('finish', () => resolve(undefined)),
     );
+
+    // Clean up old files based on retentionDays if enabled
+    if (cleanupOnRotation) {
+      cleanupOldFiles(logDirectory, filename, retentionDays);
+    }
+    
+    // Optionally archive old log files if enabled
+    if (archiveOnRotation) {
+      await archiveLogFiles(
+        logDirectory, 
+        filename, 
+        currentDate,
+        archiveFormat,
+        compressionLevel,
+        archiveDirectory,
+      );
+    }
   } catch (error) {
     console.error('Error closing stream:', error);
   }
@@ -453,6 +479,8 @@ export default function fileTransport(options: FileTransportOptions) {
     archiveFormat = 'zip',
     compressionLevel = 6,
     archiveDirectory,
+    cleanupOnRotation = true,
+    archiveOnRotation = false,
   } = options;
 
   try {
@@ -513,7 +541,18 @@ export default function fileTransport(options: FileTransportOptions) {
             handleFlushBuffer();
 
             // Rotate log file
-            stream = await rotateLogFile(stream, logDirectory, filename, currentDate);
+            stream = await rotateLogFile(
+              stream, 
+              logDirectory, 
+              filename, 
+              currentDate, 
+              retentionDays,
+              archiveFormat,
+              compressionLevel,
+              archiveDirectory,
+              cleanupOnRotation,
+              archiveOnRotation,
+            );
             lastDate = currentDate;
           }
 
