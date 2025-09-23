@@ -1,45 +1,37 @@
-# pino-file-logger-transport
+<div align="center">
+  <h1>pino-file-logger-transport</h1>
+  <p><strong>Professional file logging transport for Pino with rotation and archiving</strong></p>
+  
+  <p>
+    <a href="https://www.npmjs.com/package/pino-file-logger-transport">
+      <img src="https://img.shields.io/npm/v/pino-file-logger-transport.svg?style=flat-square" alt="npm version">
+    </a>
+    <a href="https://www.npmjs.com/package/pino-file-logger-transport">
+      <img src="https://img.shields.io/npm/dm/pino-file-logger-transport.svg?style=flat-square" alt="npm downloads">
+    </a>
+    <a href="https://github.com/ProydakD/pino-file-logger-transport/blob/main/LICENSE">
+      <img src="https://img.shields.io/npm/l/pino-file-logger-transport.svg?style=flat-square" alt="license">
+    </a>
+  </p>
+</div>
 
-A Pino transport for file logging with rotation and archiving capabilities.
+## 🚀 Features
 
-## Features
+- **Smart Log Rotation** - Automatic daily log file rotation with customizable naming
+- **Intelligent Archiving** - Archive old logs in ZIP, GZIP, or TAR formats
+- **Configurable Retention** - Automatic cleanup of old logs based on retention policy
+- **High Performance** - Buffered writes and async I/O for optimal performance
+- **Flexible Filtering** - Log level filtering to control verbosity
+- **Robust Error Handling** - Graceful degradation without crashing your application
+- **Pino Ecosystem** - Seamless integration with Pino logger ecosystem
 
-- Write logs to files with configurable directory and filename
-- Automatic log directory creation
-- JSON formatted logs compatible with Pino
-- Easy integration with Pino logger
-- Automatic log rotation by date
-- Configurable log retention with automatic cleanup
-- Log level filtering
-- Archive old log files in various formats (ZIP, GZIP)
-- Configurable compression levels
-- Buffering for high-performance logging
-
-## Log Archiving
-
-The transport automatically archives old log files when:
-1. A new day starts (log rotation)
-2. The transport is closed
-
-### Archive Formats
-
-- **ZIP** - Default format with good compression
-- **GZIP** - Alternative format with faster compression
-- **None** - Disable archiving completely
-
-### Compression Levels
-
-You can configure the compression level from 0 (no compression) to 9 (maximum compression). Higher levels provide better compression but require more CPU resources.
-
-## Installation
+## 📦 Installation
 
 ```bash
 npm install pino-file-logger-transport
 ```
 
-## Usage
-
-### Basic Usage
+## 🎯 Quick Start
 
 ```javascript
 const pino = require('pino');
@@ -55,11 +47,40 @@ const transport = pino.transport({
 
 const logger = pino(transport);
 
-logger.info('Hello world');
-logger.error('This is an error');
+logger.info('Hello world!');
+logger.error('Something went wrong');
 ```
 
-### Advanced Usage
+## ⚙️ Configuration
+
+```javascript
+const transport = pino.transport({
+  target: 'pino-file-logger-transport',
+  options: {
+    // Required: Directory for log files
+    logDirectory: './logs',
+    
+    // Optional: Base filename (default: 'log')
+    filename: 'my-app',
+    
+    // Optional: Days to retain logs (default: 7)
+    retentionDays: 30,
+    
+    // Optional: Minimum log level (default: 'info')
+    level: 'warn',
+    
+    // Optional: Archive format (default: 'zip')
+    archiveFormat: 'gzip',
+    
+    // Optional: Buffer size for performance (default: 100)
+    bufferSize: 50,
+  },
+});
+
+const logger = pino(transport);
+```
+
+## 🛠 Advanced Usage
 
 ```javascript
 const pino = require('pino');
@@ -69,87 +90,52 @@ const transport = pino.transport({
   options: {
     logDirectory: './logs',
     filename: 'application',
-    retentionDays: 7,
-    level: 'warn',
-    bufferSize: 50,
-    flushInterval: 500,
+    retentionDays: 14,
+    level: 'info',
+    bufferSize: 100,
+    flushInterval: 1000,
     archiveFormat: 'zip',
     compressionLevel: 6,
-    autoArchive: true,
+    archiveDirectory: './archives',
+    cleanupOnRotation: true,
+    archiveOnRotation: true,
   },
 });
 
 const logger = pino(transport);
 
-// Log different types of messages
-logger.info('Application started');
-logger.warn({ userId: 123 }, 'User performed suspicious action');
-logger.error(
-  new Error('Database connection failed'),
-  'Failed to connect to database',
-);
+// Structured logging
+logger.info({ userId: 123, action: 'login' }, 'User authenticated');
 
-// Child logger example
-const childLogger = logger.child({ component: 'auth-service' });
-childLogger.info('User authentication successful');
+// Error logging with stack traces
+logger.error(new Error('Database connection failed'), 'Critical system error');
+
+// Child loggers
+const authServiceLogger = logger.child({ service: 'auth' });
+authServiceLogger.info('Authentication service initialized');
 ```
 
-## Options
+## 📖 Documentation
 
-- `logDirectory` (string, required) - Path to the log directory
-- `filename` (string, optional, default: 'log') - Base filename for log files (without extension)
-- `retentionDays` (number, optional, default: 7) - Number of days to retain log files
-- `level` (string, optional, default: 'info') - Minimum log level to write to file ('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent')
-- `bufferSize` (number, optional, default: 100) - Buffer size for batching log writes
-- `flushInterval` (number, optional, default: 1000) - Flush interval in milliseconds
-- `archiveFormat` (string, optional, default: 'zip') - Archive format for old log files ('zip', 'gzip', 'none')
-- `compressionLevel` (number, optional, default: 9) - Compression level for archives (0-9, where 9 is maximum compression)
-- `autoArchive` (boolean, optional, default: true) - Whether to automatically archive old log files
+For complete documentation, visit our [docs](./docs/README.md):
 
-## Development
+- [🔧 Features](./docs/FEATURES.md) - Full feature overview
+- [🚀 Usage Guide](./docs/USAGE.md) - Detailed usage instructions
+- [📚 API Reference](./docs/API.md) - Complete API documentation
+- [🏗 Architecture](./docs/ARCHITECTURE.md) - Internal architecture
 
-### Building
-
-```bash
-npm run build
-```
-
-### Testing
+## 🧪 Testing
 
 ```bash
 npm test
 ```
 
-### Linting
+## 📄 License
 
-```bash
-npm run lint
-```
+MIT © [ProydakD](https://github.com/ProydakD)
 
-### Formatting
+---
 
-```bash
-npm run prettier
-```
-
-### Release Process
-
-This package uses `standard-version` for automated release management:
-
-```bash
-npm run release          # Create new release with automatic version bump
-npm run release:patch    # Bump patch version (1.0.0 -> 1.0.1)
-npm run release:minor    # Bump minor version (1.0.1 -> 1.1.0)
-npm run release:major    # Bump major version (1.1.0 -> 2.0.0)
-npm run release:beta     # Create beta release (1.0.0 -> 1.0.1-beta.0)
-```
-
-The release process will:
-1. Bump version in `package.json`
-2. Generate or update `CHANGELOG.md`
-3. Create git commit with release changes
-4. Create git tag with new version
-
-## License
-
-MIT
+<div align="center">
+  <sub>Built with ❤️ for the Node.js community</sub>
+</div>
