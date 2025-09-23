@@ -348,6 +348,9 @@ async function archiveSingleLogFile(
   const archivePath = join(targetArchiveDirectory, logFile.replace(/\.log$/, archiveExtension));
 
   try {
+    // Ensure archive directory exists
+    ensureLogDirectoryExists(targetArchiveDirectory);
+    
     // Create archive based on format
     const output = createWriteStream(archivePath);
     let archive: archiver.Archiver;
@@ -435,7 +438,7 @@ async function rotateLogFile(
 
     // Clean up old files based on retentionDays if enabled
     if (cleanupOnRotation) {
-      cleanupOldFiles(logDirectory, filename, retentionDays);
+      cleanupOldFiles(logDirectory, filename, retentionDays, archiveDirectory);
     }
     
     // Optionally archive old log files if enabled
@@ -488,7 +491,7 @@ export default function fileTransport(options: FileTransportOptions) {
     ensureLogDirectoryExists(logDirectory);
 
     // Clean up old files based on retentionDays
-    cleanupOldFiles(logDirectory, filename, retentionDays);
+    cleanupOldFiles(logDirectory, filename, retentionDays, archiveDirectory);
   } catch (error) {
     console.error('Error initializing file transport:', error);
     // Continue execution even if initialization fails
@@ -670,11 +673,13 @@ function deleteFileIfExists(filePath: string): void {
  * @param logDirectory - Directory containing log files
  * @param filename - Base filename for log files
  * @param retentionDays - Number of days to retain files
+ * @param archiveDirectory - Directory containing archives (if different from logDirectory)
  */
 function cleanupOldFiles(
   logDirectory: string,
   filename: string,
   retentionDays: number,
+  archiveDirectory?: string,
 ): void {
   try {
     // Calculate cutoff date
@@ -700,6 +705,39 @@ function cleanupOldFiles(
         }
       } catch (fileError) {
         console.error(`Error processing file ${file}:`, fileError);
+      }
+    }
+    
+    // If archive directory is specified and different from log directory, check it too
+    if (archiveDirectory && archiveDirectory !== logDirectory) {
+      try {
+        // Check if archive directory exists before trying to read it
+        if (existsSync(archiveDirectory)) {
+          // Get all files in archive directory
+          const archiveFiles = readdirSync(archiveDirectory);
+
+          // Filter files that match our pattern
+          const relevantArchiveFiles = filterRelevantFiles(archiveFiles, filename);
+
+          // Check each archive file
+          for (const file of relevantArchiveFiles) {
+            try {
+              // Extract date from filename
+              const fileDate = extractDateFromFilename(file);
+              if (fileDate) {
+                // If file is older than cutoff date, delete it
+                if (fileDate < cutoffDate) {
+                  const filePath = join(archiveDirectory, file);
+                  deleteFileIfExists(filePath);
+                }
+              }
+            } catch (fileError) {
+              console.error(`Error processing archive file ${file}:`, fileError);
+            }
+          }
+        }
+      } catch (archiveDirError) {
+        console.error('Error accessing archive directory:', archiveDirError);
       }
     }
   } catch (error) {
