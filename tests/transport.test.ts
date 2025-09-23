@@ -200,4 +200,17 @@ describe('File Transport', () => {
       unlinkSync(recentLogFile);
     }
   });
+
+  it('should not crash when log directory is not accessible', () => {
+    const inaccessibleDir = join(testDir, 'inaccessible');
+
+    // Create transport with inaccessible directory
+    const transport = fileTransport({
+      logDirectory: inaccessibleDir,
+      filename: 'test',
+    });
+
+    // Should still create transport object
+    expect(transport).toBeDefined();
+  });
 });
