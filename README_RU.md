@@ -9,7 +9,7 @@
     <a href="https://www.npmjs.com/package/pino-file-logger-transport">
       <img src="https://img.shields.io/npm/dm/pino-file-logger-transport.svg?style=flat-square" alt="Скачиваний npm">
     </a>
-    <a href="https://github.com/ProydakD/pino-file-logger-transport/blob/main/LICENSE">
+    <a href="https://github.com/ProydakD/pino-file-logger-transport/blob/master/LICENSE">
       <img src="https://img.shields.io/npm/l/pino-file-logger-transport.svg?style=flat-square" alt="Лицензия">
     </a>
     <br>
