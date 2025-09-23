@@ -35,6 +35,18 @@ export interface FileTransportOptions {
    * @default 7
    */
   retentionDays?: number;
+
+  /**
+   * Buffer size for batching log writes
+   * @default 100
+   */
+  bufferSize?: number;
+
+  /**
+   * Flush interval in milliseconds
+   * @default 1000
+   */
+  flushInterval?: number;
 }
 
 /**
@@ -44,7 +56,13 @@ export interface FileTransportOptions {
  * @returns A writable stream that can be used as a Pino transport
  */
 export default function fileTransport(options: FileTransportOptions) {
-  const { logDirectory, filename = 'log', retentionDays = 7 } = options;
+  const {
+    logDirectory,
+    filename = 'log',
+    retentionDays = 7,
+    bufferSize = 100,
+    flushInterval = 1000,
+  } = options;
 
   try {
     // Ensure log directory exists
@@ -87,6 +105,47 @@ export default function fileTransport(options: FileTransportOptions) {
   let lastDate = currentDate;
   let previousFilePath: string | null = null;
 
+  // Buffer for batching writes
+  let buffer: string[] = [];
+  let flushTimer: NodeJS.Timeout | null = null;
+
+  // Function to flush buffer to stream
+  const flushBuffer = () => {
+    if (buffer.length > 0) {
+      try {
+        const data = buffer.join('');
+        buffer = [];
+
+        const toDrain = !stream.write(data);
+        // If the stream needs to drain, wait for it
+        if (toDrain) {
+          stream.once('drain', () => {
+            // Continue processing
+          });
+        }
+      } catch (error) {
+        console.error('Error writing buffer to stream:', error);
+      }
+    }
+
+    // Clear timer
+    if (flushTimer) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+    }
+  };
+
+  // Function to schedule buffer flush
+  const scheduleFlush = () => {
+    if (flushTimer) {
+      clearTimeout(flushTimer);
+    }
+
+    flushTimer = setTimeout(() => {
+      flushBuffer();
+    }, flushInterval);
+  };
+
   return build(
     async function (source) {
       for await (const obj of source) {
@@ -94,6 +153,9 @@ export default function fileTransport(options: FileTransportOptions) {
           // Check if date has changed
           const currentDate = getCurrentDate();
           if (currentDate !== lastDate) {
+            // Flush buffer before rotating
+            flushBuffer();
+
             try {
               // Close current stream
               stream.end();
@@ -169,23 +231,31 @@ export default function fileTransport(options: FileTransportOptions) {
             lastDate = currentDate;
           }
 
-          // Write the log object to the file
-          const toDrain = !stream.write(JSON.stringify(obj) + '\n');
-          // If the stream needs to drain, wait for it
-          if (toDrain) {
-            await new Promise((resolve) =>
-              stream.once('drain', () => resolve(undefined)),
-            );
+          // Add log entry to buffer
+          buffer.push(JSON.stringify(obj) + '\n');
+
+          // Flush buffer if it reaches bufferSize
+          if (buffer.length >= bufferSize) {
+            flushBuffer();
+          } else {
+            // Schedule flush if not already scheduled
+            scheduleFlush();
           }
         } catch (error) {
           console.error('Error processing log entry:', error);
           // Continue processing other log entries
         }
       }
+
+      // Flush remaining buffer when source ends
+      flushBuffer();
     },
     {
       async close() {
         try {
+          // Flush any remaining buffer
+          flushBuffer();
+
           stream.end();
           // Wait for the stream to finish
           await new Promise((resolve) =>

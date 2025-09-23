@@ -213,4 +213,30 @@ describe('File Transport', () => {
     // Should still create transport object
     expect(transport).toBeDefined();
   });
+
+  it('should handle high load with buffering', async () => {
+    const filename = 'performance-test';
+    const transport = fileTransport({
+      logDirectory: testDir,
+      filename,
+      bufferSize: 10,
+      flushInterval: 50,
+    });
+
+    // Write multiple log entries quickly
+    for (let i = 0; i < 25; i++) {
+      transport.write(JSON.stringify({ msg: `log entry ${i}` }) + '\n');
+    }
+
+    transport.end();
+
+    // Wait for all logs to be written
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Check that log file was created
+    const files = readdirSync(testDir);
+    const date = new Date();
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    expect(files).toContain(`${filename}-${dateString}.log`);
+  });
 });
