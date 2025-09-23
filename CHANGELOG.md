@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.3.0...v1.4.0) (2025-09-23)
+
+
+### Changed
+
+* **docs:** вынесена русская документация в отдельные файлы _RU и переведены основные файлы на английский ([8f12db0](https://github.com/ProydakD/pino-file-logger-transport/commit/8f12db02ec95562d939648a332e947492f4793b0))
+* **docs:** добавлены файлы документации и обновлён README ([6315efe](https://github.com/ProydakD/pino-file-logger-transport/commit/6315efe4cde008c496377644af0111cf5e0617f2))
+* **examples:** обновлены параметры буферизации и архивации в примерах ([90af1a9](https://github.com/ProydakD/pino-file-logger-transport/commit/90af1a99d897fa6788cddcba9efe54c9c8c47fa4))
+* **readme:** Добавлена русская локализация документации ([eac7690](https://github.com/ProydakD/pino-file-logger-transport/commit/eac7690ff53ccdfb6513cda6114ce929d95f058f))
+
+
+### Added
+
+* **transport:** добавлена проверка директории архивов и расширена очистка старых логов и архивов ([ba65ba3](https://github.com/ProydakD/pino-file-logger-transport/commit/ba65ba397dbf7173203aaee2d42beefa5621974f))
+* **transport:** добавлены параметры cleanupOnRotation и archiveOnRotation для ротации логов ([4dcc420](https://github.com/ProydakD/pino-file-logger-transport/commit/4dcc420390bfa2859a4c562a70117e8191087e32))
+
 ## [1.3.0](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.2.0...v1.3.0) (2025-09-23)
 
 
