@@ -5,8 +5,8 @@
  */
 
 import build from 'pino-abstract-transport';
-import { createWriteStream, WriteStream } from 'fs';
-import { mkdirSync, existsSync, unlinkSync, readdirSync } from 'fs';
+import { createWriteStream, WriteStream, createReadStream, unlinkSync, readdirSync } from 'fs';
+import { mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import archiver from 'archiver';
 
@@ -36,12 +36,15 @@ export interface FileTransportOptions {
  * @returns A writable stream that can be used as a Pino transport
  */
 export default function fileTransport(options: FileTransportOptions) {
-  const { logDirectory, filename = 'log' } = options;
+  const { logDirectory, filename = 'log', retentionDays = 7 } = options;
 
   // Ensure log directory exists
   if (!existsSync(logDirectory)) {
     mkdirSync(logDirectory, { recursive: true });
   }
+
+  // Clean up old files based on retentionDays
+  cleanupOldFiles(logDirectory, filename, retentionDays);
 
   // Get current date for filename
   const getCurrentDate = () => {
@@ -138,7 +141,59 @@ export default function fileTransport(options: FileTransportOptions) {
             }
           }
         }
+
+        // Also clean up old files when closing
+        cleanupOldFiles(logDirectory, filename, retentionDays);
       },
     },
   );
+}
+
+/**
+ * Clean up old log files and archives based on retention days
+ *
+ * @param logDirectory - Directory containing log files
+ * @param filename - Base filename for log files
+ * @param retentionDays - Number of days to retain files
+ */
+function cleanupOldFiles(
+  logDirectory: string,
+  filename: string,
+  retentionDays: number,
+) {
+  try {
+    // Get current date
+    const now = new Date();
+
+    // Calculate cutoff date
+    const cutoffDate = new Date(now);
+    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+
+    // Get all files in log directory
+    const files = readdirSync(logDirectory);
+
+    // Filter files that match our pattern
+    const relevantFiles = files.filter(
+      (file) =>
+        file.startsWith(filename) && (file.endsWith('.log') || file.endsWith('.zip')),
+    );
+
+    // Check each file
+    for (const file of relevantFiles) {
+      // Extract date from filename (format: filename-YYYY-MM-DD.log or filename-YYYY-MM-DD.zip)
+      const dateMatch = file.match(/-(\d{4}-\d{2}-\d{2})\.(log|zip)$/);
+      if (dateMatch) {
+        const fileDate = new Date(dateMatch[1]);
+        // If file is older than cutoff date, delete it
+        if (fileDate < cutoffDate) {
+          const filePath = join(logDirectory, file);
+          if (existsSync(filePath)) {
+            unlinkSync(filePath);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error cleaning up old files:', error);
+  }
 }

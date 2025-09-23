@@ -7,7 +7,7 @@ const transport = pino.transport({
   options: {
     logDirectory: './logs',
     filename: 'archive-test',
-    retentionDays: 7,
+    retentionDays: 3,
   },
 });
 
