@@ -103,7 +103,6 @@ export default function fileTransport(options: FileTransportOptions) {
   }
 
   let lastDate = currentDate;
-  let previousFilePath: string | null = null;
 
   // Buffer for batching writes
   let buffer: string[] = [];
@@ -146,6 +145,65 @@ export default function fileTransport(options: FileTransportOptions) {
     }, flushInterval);
   };
 
+  // Function to archive all log files in the directory except the current one
+  const archiveLogFiles = async () => {
+    try {
+      // Check if log directory exists
+      if (!existsSync(logDirectory)) {
+        console.warn(`Log directory does not exist: ${logDirectory}`);
+        return;
+      }
+
+      // Get all files in log directory
+      const files = readdirSync(logDirectory);
+
+      // Filter files that match our pattern and are log files
+      const logFiles = files.filter(
+        (file) =>
+          file.startsWith(filename) &&
+          file.endsWith('.log') &&
+          file !== `${filename}-${currentDate}.log`, // Don't archive current file
+      );
+
+      // Archive each log file
+      for (const logFile of logFiles) {
+        const logFilePath = join(logDirectory, logFile);
+        const archivePath = logFilePath.replace(/\.log$/, '.zip');
+
+        try {
+          // Create archive
+          const output = createWriteStream(archivePath);
+          const archive = archiver('zip', {
+            zlib: { level: 9 }, // Sets the compression level
+          });
+
+          // Pipe archive data to the file
+          archive.pipe(output);
+
+          // Append file to archive
+          archive.file(logFilePath, { name: logFile });
+
+          // Finalize the archive
+          await archive.finalize();
+
+          // Remove original file after archiving
+          try {
+            unlinkSync(logFilePath);
+          } catch (unlinkError) {
+            console.error(
+              'Error removing original file after archiving:',
+              unlinkError,
+            );
+          }
+        } catch (error) {
+          console.error(`Error archiving file ${logFile}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error archiving log files:', error);
+    }
+  };
+
   return build(
     async function (source) {
       for await (const obj of source) {
@@ -168,48 +226,8 @@ export default function fileTransport(options: FileTransportOptions) {
               console.error('Error closing stream:', error);
             }
 
-            // Archive previous file if it exists
-            if (previousFilePath && existsSync(previousFilePath)) {
-              const archivePath = previousFilePath.replace(/\.log$/, '.zip');
-
-              try {
-                // Create archive
-                const output = createWriteStream(archivePath);
-                const archive = archiver('zip', {
-                  zlib: { level: 9 }, // Sets the compression level
-                });
-
-                // Pipe archive data to the file
-                archive.pipe(output);
-
-                // Append file to archive
-                const fileName =
-                  previousFilePath.split('/').pop()?.split('\\').pop() ||
-                  'file.log';
-                archive.file(previousFilePath, { name: fileName });
-
-                // Finalize the archive
-                await archive.finalize();
-
-                // Remove original file after archiving
-                try {
-                  unlinkSync(previousFilePath);
-                } catch (unlinkError) {
-                  console.error(
-                    'Error removing original file after archiving:',
-                    unlinkError,
-                  );
-                }
-              } catch (error) {
-                console.error('Error archiving file:', error);
-              }
-            }
-
-            // Set previous file path
-            previousFilePath = join(
-              logDirectory,
-              `${filename}-${lastDate}.log`,
-            );
+            // Archive all log files in the directory
+            await archiveLogFiles();
 
             // Create new stream with new date
             const newLogFilePath = join(
@@ -262,42 +280,8 @@ export default function fileTransport(options: FileTransportOptions) {
             stream.once('finish', () => resolve(undefined)),
           );
 
-          // Archive previous file if it exists
-          if (previousFilePath && existsSync(previousFilePath)) {
-            const archivePath = previousFilePath.replace(/\.log$/, '.zip');
-
-            try {
-              // Create archive
-              const output = createWriteStream(archivePath);
-              const archive = archiver('zip', {
-                zlib: { level: 9 }, // Sets the compression level
-              });
-
-              // Pipe archive data to the file
-              archive.pipe(output);
-
-              // Append file to archive
-              const fileName =
-                previousFilePath.split('/').pop()?.split('\\').pop() ||
-                'file.log';
-              archive.file(previousFilePath, { name: fileName });
-
-              // Finalize the archive
-              await archive.finalize();
-
-              // Remove original file after archiving
-              try {
-                unlinkSync(previousFilePath);
-              } catch (unlinkError) {
-                console.error(
-                  'Error removing original file after archiving:',
-                  unlinkError,
-                );
-              }
-            } catch (error) {
-              console.error('Error archiving file on close:', error);
-            }
-          }
+          // Archive all log files in the directory
+          await archiveLogFiles();
         } catch (error) {
           console.error('Error closing transport:', error);
         }
