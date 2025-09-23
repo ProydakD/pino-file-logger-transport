@@ -134,26 +134,21 @@ npm run prettier
 
 ### Release Process
 
-This package uses `release-please` for automated release management:
+This package uses `standard-version` for automated release management:
 
-1. **Create Release PR** - Creates a pull request with version bump and changelog:
-   ```bash
-   npm run release:create
-   ```
-
-2. **Approve Release** - Creates GitHub release and tags after PR is merged:
-   ```bash
-   npm run release:approve
-   ```
-
-### Version Management
-
-You can also manage versions directly:
 ```bash
-npm run version:patch    # 1.0.0 -> 1.0.1
-npm run version:minor    # 1.0.1 -> 1.1.0
-npm run version:major    # 1.1.0 -> 2.0.0
+npm run release          # Create new release with automatic version bump
+npm run release:patch    # Bump patch version (1.0.0 -> 1.0.1)
+npm run release:minor    # Bump minor version (1.0.1 -> 1.1.0)
+npm run release:major    # Bump major version (1.1.0 -> 2.0.0)
+npm run release:beta     # Create beta release (1.0.0 -> 1.0.1-beta.0)
 ```
+
+The release process will:
+1. Bump version in `package.json`
+2. Generate or update `CHANGELOG.md`
+3. Create git commit with release changes
+4. Create git tag with new version
 
 ## License
 
