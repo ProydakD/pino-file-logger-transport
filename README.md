@@ -12,6 +12,8 @@
     <a href="https://github.com/ProydakD/pino-file-logger-transport/blob/main/LICENSE">
       <img src="https://img.shields.io/npm/l/pino-file-logger-transport.svg?style=flat-square" alt="license">
     </a>
+    <br>
+    <strong>English</strong> | <a href="./README_RU.md">Русский</a>
   </p>
 </div>
 
