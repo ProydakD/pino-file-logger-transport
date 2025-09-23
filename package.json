@@ -37,5 +37,16 @@
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "pino": "^9.11.0",
+    "pino-abstract-transport": "^2.0.0",
+    "sonic-boom": "^4.2.0"
+  },
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   }
 }
