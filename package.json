@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "A Pino transport for file logging with rotation and archiving capabilities",
   "scripts": {
-    "test": "jest",
-    "lint": "eslint ."
+    "test": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prettier": "prettier --check .",
+    "format": "prettier --write .",
+    "build": "tsc",
+    "dev": "vitest watch"
   },
   "keywords": [
     "pino",
@@ -17,8 +22,20 @@
   "author": "",
   "license": "MIT",
   "type": "commonjs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
   "devDependencies": {
+    "@types/node": "^24.5.2",
+    "@types/pino": "^7.0.4",
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
+    "eslint": "^8.0.0",
     "jest": "^29.0.0",
-    "eslint": "^8.0.0"
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }
