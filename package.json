@@ -1,13 +1,24 @@
 {
-  "name": "pino-telegram-logger-transport",
+  "name": "pino-file-logger-transport",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A Pino transport for file logging with rotation and archiving capabilities",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "lint": "eslint ."
   },
-  "keywords": [],
+  "keywords": [
+    "pino",
+    "logger",
+    "transport",
+    "file",
+    "rotation",
+    "archive"
+  ],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "license": "MIT",
+  "type": "commonjs",
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0"
+  }
 }
