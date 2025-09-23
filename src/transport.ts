@@ -7,11 +7,8 @@
 import build from 'pino-abstract-transport';
 import {
   createWriteStream,
-  WriteStream,
-  createReadStream,
   unlinkSync,
   readdirSync,
-  promises as fsPromises,
 } from 'fs';
 import { mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
@@ -49,6 +46,231 @@ export interface FileTransportOptions {
   flushInterval?: number;
 }
 
+// Utility functions for file operations
+// These functions handle specific file operations and could be moved to a separate module
+
+/**
+ * Ensures that the log directory exists, creating it if necessary
+ *
+ * @param logDirectory - Path to the log directory
+ * * @throws {Error} If unable to create the directory
+ */
+function ensureLogDirectoryExists(logDirectory: string): void {
+  try {
+    if (!existsSync(logDirectory)) {
+      mkdirSync(logDirectory, { recursive: true });
+    }
+  } catch (error: unknown) {
+    console.error('Error ensuring log directory exists:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to ensure log directory exists: ${errorMessage}`);
+  }
+}
+
+/**
+ * Gets current date in YYYY-MM-DD format
+ *
+ * @returns Current date string in YYYY-MM-DD format
+ */
+function getCurrentDate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Creates a write stream for the log file
+ *
+ * @param logFilePath - Path to the log file
+ * @returns Write stream or fallback console stream
+ */
+function createLogFileStream(logFilePath: string): Writable {
+  try {
+    return createWriteStream(logFilePath, { flags: 'a' });
+  } catch (error) {
+    console.error('Error creating write stream:', error);
+    // Create a dummy stream that writes to console as fallback
+    return new Writable({
+      write(chunk: unknown, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+        console.log('FALLBACK:', (chunk as { toString: () => string }).toString());
+        callback();
+      },
+    });
+  }
+}
+
+// Buffer management functions
+// These functions handle buffer operations for batching log writes
+
+/**
+ * Flushes the buffer to the stream
+ *
+ * @param buffer - Buffer containing log entries
+ * @param stream - Write stream to flush to
+ * @returns Updated empty buffer
+ */
+function flushBuffer(buffer: string[], stream: Writable): string[] {
+  if (buffer.length > 0) {
+    try {
+      const data = buffer.join('');
+      
+      const toDrain = !stream.write(data);
+      // If the stream needs to drain, wait for it
+      if (toDrain) {
+        stream.once('drain', () => {
+          // Continue processing
+        });
+      }
+    } catch (error) {
+      console.error('Error writing buffer to stream:', error);
+    }
+  }
+  
+  return [];
+}
+
+/**
+ * Schedules buffer flush with timeout
+ *
+ * @param flushTimer - Current flush timer
+ * @param flushBuffer - Function to flush buffer
+ * @param flushInterval - Flush interval in milliseconds
+ * @returns New flush timer
+ */
+function scheduleFlush(
+  flushTimer: NodeJS.Timeout | null,
+  flushBuffer: () => void,
+  flushInterval: number
+): NodeJS.Timeout {
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+  }
+
+  return setTimeout(() => {
+    flushBuffer();
+  }, flushInterval);
+}
+
+// File archiving functions
+// These functions handle log file archiving operations
+
+/**
+ * Archives all log files in the directory except the current one
+ *
+ * @param logDirectory - Directory containing log files
+ * @param filename - Base filename for log files
+ * @param currentDate - Current date in YYYY-MM-DD format
+ */
+async function archiveLogFiles(
+  logDirectory: string,
+  filename: string,
+  currentDate: string
+): Promise<void> {
+  try {
+    // Check if log directory exists
+    if (!existsSync(logDirectory)) {
+      console.warn(`Log directory does not exist: ${logDirectory}`);
+      return;
+    }
+
+    // Get all files in log directory
+    const files = readdirSync(logDirectory);
+
+    // Filter files that match our pattern and are log files
+    const logFiles = files.filter(
+      (file) =>
+        file.startsWith(filename) &&
+        file.endsWith('.log') &&
+        file !== `${filename}-${currentDate}.log`, // Don't archive current file
+    );
+
+    // Archive each log file
+    for (const logFile of logFiles) {
+      await archiveSingleLogFile(logDirectory, logFile);
+    }
+  } catch (error) {
+    console.error('Error archiving log files:', error);
+  }
+}
+
+/**
+ * Archives a single log file
+ *
+ * @param logDirectory - Directory containing log files
+ * @param logFile - Name of the log file to archive
+ */
+async function archiveSingleLogFile(
+  logDirectory: string,
+  logFile: string
+): Promise<void> {
+  const logFilePath = join(logDirectory, logFile);
+  const archivePath = logFilePath.replace(/\.log$/, '.zip');
+
+  try {
+    // Create archive
+    const output = createWriteStream(archivePath);
+    const archive = archiver('zip', {
+      zlib: { level: 9 }, // Sets the compression level
+    });
+
+    // Pipe archive data to the file
+    archive.pipe(output);
+
+    // Append file to archive
+    archive.file(logFilePath, { name: logFile });
+
+    // Finalize the archive
+    await archive.finalize();
+
+    // Remove original file after archiving
+    try {
+      unlinkSync(logFilePath);
+    } catch (unlinkError) {
+      console.error(
+        'Error removing original file after archiving:',
+        unlinkError,
+      );
+    }
+  } catch (error) {
+    console.error(`Error archiving file ${logFile}:`, error);
+  }
+}
+
+/**
+ * Rotates the log file when date changes
+ *
+ * @param stream - Current write stream
+ * @param logDirectory - Directory containing log files
+ * @param filename - Base filename for log files
+ * @param currentDate - Current date in YYYY-MM-DD format
+ * @returns New write stream
+ */
+async function rotateLogFile(
+  stream: Writable,
+  logDirectory: string,
+  filename: string,
+  currentDate: string
+): Promise<Writable> {
+  try {
+    // Close current stream
+    stream.end();
+
+    // Wait for the stream to finish
+    await new Promise((resolve) =>
+      stream.once('finish', () => resolve(undefined)),
+    );
+  } catch (error) {
+    console.error('Error closing stream:', error);
+  }
+
+  // Create new stream with new date
+  const newLogFilePath = join(
+    logDirectory,
+    `${filename}-${currentDate}.log`,
+  );
+  
+  return createLogFileStream(newLogFilePath);
+}
+
 /**
  * Creates a file transport for Pino logger
  *
@@ -66,9 +288,7 @@ export default function fileTransport(options: FileTransportOptions) {
 
   try {
     // Ensure log directory exists
-    if (!existsSync(logDirectory)) {
-      mkdirSync(logDirectory, { recursive: true });
-    }
+    ensureLogDirectoryExists(logDirectory);
 
     // Clean up old files based on retentionDays
     cleanupOldFiles(logDirectory, filename, retentionDays);
@@ -78,29 +298,13 @@ export default function fileTransport(options: FileTransportOptions) {
   }
 
   // Get current date for filename
-  const getCurrentDate = () => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  };
-
-  // Create the log file path with date
   const currentDate = getCurrentDate();
+  
+  // Create the log file path with date
   const logFilePath = join(logDirectory, `${filename}-${currentDate}.log`);
-
+  
   // Create write stream
-  let stream: Writable;
-  try {
-    stream = createWriteStream(logFilePath, { flags: 'a' });
-  } catch (error) {
-    console.error('Error creating write stream:', error);
-    // Create a dummy stream that writes to console as fallback
-    stream = new Writable({
-      write(chunk: any, encoding: any, callback: any) {
-        console.log('FALLBACK:', chunk.toString());
-        callback();
-      },
-    });
-  }
+  let stream: Writable = createLogFileStream(logFilePath);
 
   let lastDate = currentDate;
 
@@ -109,23 +313,8 @@ export default function fileTransport(options: FileTransportOptions) {
   let flushTimer: NodeJS.Timeout | null = null;
 
   // Function to flush buffer to stream
-  const flushBuffer = () => {
-    if (buffer.length > 0) {
-      try {
-        const data = buffer.join('');
-        buffer = [];
-
-        const toDrain = !stream.write(data);
-        // If the stream needs to drain, wait for it
-        if (toDrain) {
-          stream.once('drain', () => {
-            // Continue processing
-          });
-        }
-      } catch (error) {
-        console.error('Error writing buffer to stream:', error);
-      }
-    }
+  const handleFlushBuffer = () => {
+    buffer = flushBuffer(buffer, stream);
 
     // Clear timer
     if (flushTimer) {
@@ -135,73 +324,8 @@ export default function fileTransport(options: FileTransportOptions) {
   };
 
   // Function to schedule buffer flush
-  const scheduleFlush = () => {
-    if (flushTimer) {
-      clearTimeout(flushTimer);
-    }
-
-    flushTimer = setTimeout(() => {
-      flushBuffer();
-    }, flushInterval);
-  };
-
-  // Function to archive all log files in the directory except the current one
-  const archiveLogFiles = async () => {
-    try {
-      // Check if log directory exists
-      if (!existsSync(logDirectory)) {
-        console.warn(`Log directory does not exist: ${logDirectory}`);
-        return;
-      }
-
-      // Get all files in log directory
-      const files = readdirSync(logDirectory);
-
-      // Filter files that match our pattern and are log files
-      const logFiles = files.filter(
-        (file) =>
-          file.startsWith(filename) &&
-          file.endsWith('.log') &&
-          file !== `${filename}-${currentDate}.log`, // Don't archive current file
-      );
-
-      // Archive each log file
-      for (const logFile of logFiles) {
-        const logFilePath = join(logDirectory, logFile);
-        const archivePath = logFilePath.replace(/\.log$/, '.zip');
-
-        try {
-          // Create archive
-          const output = createWriteStream(archivePath);
-          const archive = archiver('zip', {
-            zlib: { level: 9 }, // Sets the compression level
-          });
-
-          // Pipe archive data to the file
-          archive.pipe(output);
-
-          // Append file to archive
-          archive.file(logFilePath, { name: logFile });
-
-          // Finalize the archive
-          await archive.finalize();
-
-          // Remove original file after archiving
-          try {
-            unlinkSync(logFilePath);
-          } catch (unlinkError) {
-            console.error(
-              'Error removing original file after archiving:',
-              unlinkError,
-            );
-          }
-        } catch (error) {
-          console.error(`Error archiving file ${logFile}:`, error);
-        }
-      }
-    } catch (error) {
-      console.error('Error archiving log files:', error);
-    }
+  const handleScheduleFlush = () => {
+    flushTimer = scheduleFlush(flushTimer, handleFlushBuffer, flushInterval);
   };
 
   return build(
@@ -212,40 +336,10 @@ export default function fileTransport(options: FileTransportOptions) {
           const currentDate = getCurrentDate();
           if (currentDate !== lastDate) {
             // Flush buffer before rotating
-            flushBuffer();
+            handleFlushBuffer();
 
-            try {
-              // Close current stream
-              stream.end();
-
-              // Wait for the stream to finish
-              await new Promise((resolve) =>
-                stream.once('finish', () => resolve(undefined)),
-              );
-            } catch (error) {
-              console.error('Error closing stream:', error);
-            }
-
-            // Archive all log files in the directory
-            await archiveLogFiles();
-
-            // Create new stream with new date
-            const newLogFilePath = join(
-              logDirectory,
-              `${filename}-${currentDate}.log`,
-            );
-            try {
-              stream = createWriteStream(newLogFilePath, { flags: 'a' });
-            } catch (error) {
-              console.error('Error creating new write stream:', error);
-              // Create a dummy stream that writes to console as fallback
-              stream = new Writable({
-                write(chunk: any, encoding: any, callback: any) {
-                  console.log('FALLBACK:', chunk.toString());
-                  callback();
-                },
-              });
-            }
+            // Rotate log file
+            stream = await rotateLogFile(stream, logDirectory, filename, currentDate);
             lastDate = currentDate;
           }
 
@@ -254,10 +348,10 @@ export default function fileTransport(options: FileTransportOptions) {
 
           // Flush buffer if it reaches bufferSize
           if (buffer.length >= bufferSize) {
-            flushBuffer();
+            handleFlushBuffer();
           } else {
             // Schedule flush if not already scheduled
-            scheduleFlush();
+            handleScheduleFlush();
           }
         } catch (error) {
           console.error('Error processing log entry:', error);
@@ -266,13 +360,13 @@ export default function fileTransport(options: FileTransportOptions) {
       }
 
       // Flush remaining buffer when source ends
-      flushBuffer();
+      handleFlushBuffer();
     },
     {
       async close() {
         try {
           // Flush any remaining buffer
-          flushBuffer();
+          handleFlushBuffer();
 
           stream.end();
           // Wait for the stream to finish
@@ -281,13 +375,69 @@ export default function fileTransport(options: FileTransportOptions) {
           );
 
           // Archive all log files in the directory
-          await archiveLogFiles();
+          await archiveLogFiles(logDirectory, filename, getCurrentDate());
         } catch (error) {
           console.error('Error closing transport:', error);
         }
       },
     },
   );
+}
+
+// File cleanup functions
+// These functions handle old file cleanup based on retention days
+
+/**
+ * Calculates the cutoff date based on retention days
+ *
+ * @param retentionDays - Number of days to retain files
+ * @returns Cutoff date
+ */
+function calculateCutoffDate(retentionDays: number): Date {
+  const now = new Date();
+  const cutoffDate = new Date(now);
+  cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+  return cutoffDate;
+}
+
+/**
+ * Filters files that match our naming pattern
+ *
+ * @param files - Array of file names
+ * @param filename - Base filename for log files
+ * @returns Filtered array of relevant files
+ */
+function filterRelevantFiles(files: string[], filename: string): string[] {
+  return files.filter(
+    (file) =>
+      file.startsWith(filename) &&
+      (file.endsWith('.log') || file.endsWith('.zip')),
+  );
+}
+
+/**
+ * Extracts date from filename
+ *
+ * @param filename - Name of the file
+ * @returns Date extracted from filename or null if not found
+ */
+function extractDateFromFilename(filename: string): Date | null {
+  const dateMatch = filename.match(/-(\d{4}-\d{2}-\d{2})\.(log|zip)$/);
+  if (dateMatch) {
+    return new Date(dateMatch[1]);
+  }
+  return null;
+}
+
+/**
+ * Deletes a file if it exists
+ *
+ * @param filePath - Path to the file
+ */
+function deleteFileIfExists(filePath: string): void {
+  if (existsSync(filePath)) {
+    unlinkSync(filePath);
+  }
 }
 
 /**
@@ -301,38 +451,27 @@ function cleanupOldFiles(
   logDirectory: string,
   filename: string,
   retentionDays: number,
-) {
+): void {
   try {
-    // Get current date
-    const now = new Date();
-
     // Calculate cutoff date
-    const cutoffDate = new Date(now);
-    cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+    const cutoffDate = calculateCutoffDate(retentionDays);
 
     // Get all files in log directory
     const files = readdirSync(logDirectory);
 
     // Filter files that match our pattern
-    const relevantFiles = files.filter(
-      (file) =>
-        file.startsWith(filename) &&
-        (file.endsWith('.log') || file.endsWith('.zip')),
-    );
+    const relevantFiles = filterRelevantFiles(files, filename);
 
     // Check each file
     for (const file of relevantFiles) {
       try {
-        // Extract date from filename (format: filename-YYYY-MM-DD.log or filename-YYYY-MM-DD.zip)
-        const dateMatch = file.match(/-(\d{4}-\d{2}-\d{2})\.(log|zip)$/);
-        if (dateMatch) {
-          const fileDate = new Date(dateMatch[1]);
+        // Extract date from filename
+        const fileDate = extractDateFromFilename(file);
+        if (fileDate) {
           // If file is older than cutoff date, delete it
           if (fileDate < cutoffDate) {
             const filePath = join(logDirectory, file);
-            if (existsSync(filePath)) {
-              unlinkSync(filePath);
-            }
+            deleteFileIfExists(filePath);
           }
         }
       } catch (fileError) {
