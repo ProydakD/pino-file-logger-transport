@@ -5,7 +5,7 @@ const pino = require('pino');
 const transport = pino.transport({
   target: '../dist/index.js',
   options: {
-    logDirectory: './logs',
+    logDirectory: './logs/2',
     filename: 'archive-test',
     retentionDays: 3,
   },

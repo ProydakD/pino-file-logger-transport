@@ -35,6 +35,7 @@
     "build": "tsc",
     "dev": "vitest watch",
     "prepare": "npm run build",
+    "prerelease": "npm run lint && npm test && npm run build",
     "release:create": "release-please release-pr",
     "release:approve": "release-please github-release",
     "version:patch": "release-please release-pr --release-as patch",

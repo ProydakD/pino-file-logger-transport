@@ -125,7 +125,6 @@ function shouldWriteLog(obj: PinoLogEntry, configuredLevel: string): boolean {
  * Ensures that the log directory exists, creating it if necessary
  *
  * @param logDirectory - Path to the log directory
- * * @throws {Error} If unable to create the directory
  */
 function ensureLogDirectoryExists(logDirectory: string): void {
   try {
@@ -134,8 +133,7 @@ function ensureLogDirectoryExists(logDirectory: string): void {
     }
   } catch (error: unknown) {
     console.error('Error ensuring log directory exists:', error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to ensure log directory exists: ${errorMessage}`);
+    // Don't throw error, just continue - transport should be resilient
   }
 }
 
@@ -157,16 +155,30 @@ function getCurrentDate(): string {
  */
 function createLogFileStream(logFilePath: string): Writable {
   try {
-    return createWriteStream(logFilePath, { flags: 'a' });
+    const stream = createWriteStream(logFilePath, { flags: 'a' });
+    
+    // Handle stream errors
+    stream.on('error', (error) => {
+      console.error('Error in write stream:', error);
+    });
+    
+    return stream;
   } catch (error) {
     console.error('Error creating write stream:', error);
     // Create a dummy stream that writes to console as fallback
-    return new Writable({
+    const fallbackStream = new Writable({
       write(chunk: unknown, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
         console.log('FALLBACK:', (chunk as { toString: () => string }).toString());
         callback();
       },
     });
+    
+    // Handle fallback stream errors
+    fallbackStream.on('error', (error) => {
+      console.error('Error in fallback stream:', error);
+    });
+    
+    return fallbackStream;
   }
 }
 
