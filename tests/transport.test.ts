@@ -8,6 +8,7 @@ import {
   readdirSync,
   writeFileSync,
   unlinkSync,
+  readFileSync,
 } from 'fs';
 
 describe('File Transport', () => {
@@ -238,5 +239,55 @@ describe('File Transport', () => {
     const date = new Date();
     const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
     expect(files).toContain(`${filename}-${dateString}.log`);
+  });
+
+  it('should filter logs by level when level option is provided', async () => {
+    const filename = 'level-test';
+    
+    // Create transport with warn level filtering
+    const transport = fileTransport({
+      logDirectory: testDir,
+      filename,
+      level: 'warn',
+    });
+
+    // Write logs at different levels
+    // Trace level (10) - should be filtered out
+    transport.write(JSON.stringify({ level: 10, msg: 'trace message' }) + '\n');
+    // Debug level (20) - should be filtered out
+    transport.write(JSON.stringify({ level: 20, msg: 'debug message' }) + '\n');
+    // Info level (30) - should be filtered out
+    transport.write(JSON.stringify({ level: 30, msg: 'info message' }) + '\n');
+    // Warn level (40) - should be written
+    transport.write(JSON.stringify({ level: 40, msg: 'warn message' }) + '\n');
+    // Error level (50) - should be written
+    transport.write(JSON.stringify({ level: 50, msg: 'error message' }) + '\n');
+    
+    transport.end();
+
+    // Wait for logs to be written
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Check that log file was created
+    const files = readdirSync(testDir);
+    const date = new Date();
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const logFile = `${filename}-${dateString}.log`;
+    expect(files).toContain(logFile);
+
+    // Read the log file and check contents
+    const logContent = readFileSync(join(testDir, logFile), 'utf8');
+    const lines = logContent.trim().split('\n');
+    
+    // Should only have 2 log entries (warn and error)
+    expect(lines).toHaveLength(2);
+    
+    // Check that only warn and error messages are present
+    const logEntries = lines.map(line => JSON.parse(line));
+    expect(logEntries.some(entry => entry.msg === 'warn message')).toBe(true);
+    expect(logEntries.some(entry => entry.msg === 'error message')).toBe(true);
+    expect(logEntries.some(entry => entry.msg === 'info message')).toBe(false);
+    expect(logEntries.some(entry => entry.msg === 'debug message')).toBe(false);
+    expect(logEntries.some(entry => entry.msg === 'trace message')).toBe(false);
   });
 });

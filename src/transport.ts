@@ -44,6 +44,78 @@ export interface FileTransportOptions {
    * @default 1000
    */
   flushInterval?: number;
+
+  /**
+   * Minimum log level to write to file
+   * @default 'info'
+   */
+  level?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+}
+
+/**
+ * Pino log entry interface
+ */
+interface PinoLogEntry {
+  level: number;
+  time: number;
+  pid: number;
+  hostname: string;
+  msg: string;
+  [key: string]: unknown;
+}
+
+// Level filtering functions
+// These functions handle log level filtering
+
+/**
+ * Gets the numeric value of a log level
+ *
+ * @param level - Log level string
+ * @returns Numeric value of the log level (higher means more verbose)
+ */
+function getLevelValue(level: string): number {
+  switch (level) {
+    case 'silent': return 0;
+    case 'fatal': return 1;
+    case 'error': return 2;
+    case 'warn': return 3;
+    case 'info': return 4;
+    case 'debug': return 5;
+    case 'trace': return 6;
+    default: return 4; // Default to info level
+  }
+}
+
+/**
+ * Checks if a log entry should be written based on configured level
+ *
+ * @param obj - Log entry object
+ * @param configuredLevel - Configured minimum log level
+ * @returns True if log entry should be written, false otherwise
+ */
+function shouldWriteLog(obj: PinoLogEntry, configuredLevel: string): boolean {
+  // If configured level is silent, don't write anything
+  if (configuredLevel === 'silent') {
+    return false;
+  }
+
+  // Extract level from log entry (default to 'info' if not specified)
+  const logLevel = obj.level ? obj.level : 30; // 30 is info level in Pino
+  
+  // Convert Pino numeric levels to string levels for comparison
+  let logLevelStr: string;
+  switch (logLevel) {
+    case 10: logLevelStr = 'trace'; break;
+    case 20: logLevelStr = 'debug'; break;
+    case 30: logLevelStr = 'info'; break;
+    case 40: logLevelStr = 'warn'; break;
+    case 50: logLevelStr = 'error'; break;
+    case 60: logLevelStr = 'fatal'; break;
+    default: logLevelStr = 'info';
+  }
+
+  // Compare levels
+  return getLevelValue(logLevelStr) <= getLevelValue(configuredLevel);
 }
 
 // Utility functions for file operations
@@ -284,6 +356,7 @@ export default function fileTransport(options: FileTransportOptions) {
     retentionDays = 7,
     bufferSize = 100,
     flushInterval = 1000,
+    level = 'info',
   } = options;
 
   try {
@@ -332,6 +405,11 @@ export default function fileTransport(options: FileTransportOptions) {
     async function (source) {
       for await (const obj of source) {
         try {
+          // Check if log should be written based on level
+          if (!shouldWriteLog(obj, level)) {
+            continue; // Skip this log entry
+          }
+
           // Check if date has changed
           const currentDate = getCurrentDate();
           if (currentDate !== lastDate) {

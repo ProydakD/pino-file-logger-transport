@@ -71,6 +71,7 @@ childLogger.info('User authentication successful');
 - `logDirectory` (string, required) - Path to the log directory
 - `filename` (string, optional, default: 'log') - Base filename for log files (without extension)
 - `retentionDays` (number, optional, default: 7) - Number of days to retain log files
+- `level` (string, optional, default: 'info') - Minimum log level to write to file ('fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent')
 
 ## Development
 
