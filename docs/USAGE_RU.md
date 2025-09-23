@@ -1,16 +1,16 @@
-# Usage
+# Использование
 
 [English](USAGE.md) | [Русский](USAGE_RU.md)
 
-## Installation
+## Установка
 
 ```bash
 npm install pino-file-logger-transport
 ```
 
-## Basic Usage
+## Базовое использование
 
-### Simple Configuration
+### Простая конфигурация
 
 ```javascript
 const pino = require('pino');
@@ -26,11 +26,11 @@ const transport = pino.transport({
 
 const logger = pino(transport);
 
-logger.info('Hello world');
-logger.error('This is an error');
+logger.info('Привет мир');
+logger.error('Это ошибка');
 ```
 
-### Advanced Configuration
+### Продвинутая конфигурация
 
 ```javascript
 const pino = require('pino');
@@ -54,20 +54,20 @@ const transport = pino.transport({
 
 const logger = pino(transport);
 
-// Log different types of messages
-logger.info('Application started');
-logger.warn({ userId: 123 }, 'User performed suspicious action');
+// Логирование разных типов сообщений
+logger.info('Приложение запущено');
+logger.warn({ userId: 123 }, 'Пользователь выполнил подозрительное действие');
 logger.error(
-  new Error('Database connection failed'),
-  'Failed to connect to database',
+  new Error('Соединение с базой данных не удалось'),
+  'Не удалось подключиться к базе данных',
 );
 
-// Child logger example
+// Дочерний логгер
 const childLogger = logger.child({ component: 'auth-service' });
-childLogger.info('User authentication successful');
+childLogger.info('Пользователь аутентифицирован успешно');
 ```
 
-## Integration with Express.js
+## Интеграция с Express.js
 
 ```javascript
 const express = require('express');
@@ -88,7 +88,7 @@ const transport = pino.transport({
 
 const logger = pino(transport);
 
-// Middleware for HTTP request logging
+// Middleware для логирования HTTP запросов
 app.use(pinoHttp({ logger }));
 
 app.get('/', (req, res) => {
@@ -101,7 +101,7 @@ app.listen(3000, () => {
 });
 ```
 
-## Integration with Other Frameworks
+## Интеграция с другими фреймворками
 
 ### Fastify
 
@@ -131,32 +131,32 @@ fastify.listen({ port: 3000 }, (err, address) => {
 });
 ```
 
-## Error Handling
+## Работа с ошибками
 
-### File System Error Handling
+### Обработка ошибок файловой системы
 
-Transport automatically handles file system errors:
+Транспорт автоматически обрабатывает ошибки файловой системы:
 
 ```javascript
 const transport = pino.transport({
   target: 'pino-file-logger-transport',
   options: {
-    logDirectory: '/restricted/directory', // Inaccessible directory
+    logDirectory: '/restricted/directory', // Недоступная директория
     filename: 'app',
   },
 });
 
 const logger = pino(transport);
 
-// Errors will be logged to console, but application won't crash
+// Ошибки будут логироваться в консоль, но приложение не упадет
 logger.info('This message will go to console if file writing fails');
 ```
 
-## Performance Tuning
+## Настройка производительности
 
-### High Load
+### Высокая нагрузка
 
-For applications with high load:
+Для приложений с высокой нагрузкой:
 
 ```javascript
 const transport = pino.transport({
@@ -164,17 +164,17 @@ const transport = pino.transport({
   options: {
     logDirectory: './logs',
     filename: 'high-load-app',
-    bufferSize: 1000,      // Large buffer
-    flushInterval: 100,    // Frequent flush
-    retentionDays: 3,       // Less storage for space saving
-    archiveFormat: 'none', // No archiving for speed
+    bufferSize: 1000,      // Большой буфер
+    flushInterval: 100,    // Частый сброс
+    retentionDays: 3,       // Меньше хранение для экономии места
+    archiveFormat: 'none', // Без архивации для скорости
   },
 });
 ```
 
-### Low Load
+### Низкая нагрузка
 
-For applications with low load:
+Для приложений с низкой нагрузкой:
 
 ```javascript
 const transport = pino.transport({
@@ -182,27 +182,27 @@ const transport = pino.transport({
   options: {
     logDirectory: './logs',
     filename: 'low-load-app',
-    bufferSize: 10,        // Small buffer
-    flushInterval: 5000,   // Rare flush
-    retentionDays: 90,     // Long retention
-    archiveFormat: 'zip',  // ZIP archiving
-    compressionLevel: 9,   // Maximum compression
+    bufferSize: 10,        // Маленький буфер
+    flushInterval: 5000,   // Редкий сброс
+    retentionDays: 90,     // Долгое хранение
+    archiveFormat: 'zip',  // ZIP архивация
+    compressionLevel: 9,   // Максимальное сжатие
   },
 });
 ```
 
-## Monitoring and Debugging
+## Мониторинг и отладка
 
-### Transport Error Logging
+### Логирование ошибок транспорта
 
-All transport errors are logged to stderr:
+Все ошибки транспорта логируются в stderr:
 
 ```javascript
-// These messages help diagnose problems
+// Эти сообщения помогут диагностировать проблемы
 Error in write stream: [Error: ENOENT: no such file or directory, open '...']
 ```
 
-### Checking Operation
+### Проверка работы
 
 ```javascript
 const transport = pino.transport({
@@ -215,10 +215,10 @@ const transport = pino.transport({
 
 const logger = pino(transport);
 
-// Check that logging works
+// Проверим, что логирование работает
 logger.info('Transport initialized successfully');
 
-// Check files in log directory
+// Проверим файлы в директории логов
 const fs = require('fs');
 const path = require('path');
 
@@ -231,9 +231,9 @@ setTimeout(() => {
 }, 1000);
 ```
 
-## Best Practices
+## Лучшие практики
 
-### 1. Path Configuration
+### 1. Настройка путей
 
 ```javascript
 const path = require('path');
@@ -248,7 +248,7 @@ const transport = pino.transport({
 });
 ```
 
-### 2. Resource Management
+### 2. Управление ресурсами
 
 ```javascript
 const transport = pino.transport({
@@ -256,24 +256,24 @@ const transport = pino.transport({
   options: {
     logDirectory: './logs',
     filename: 'app',
-    retentionDays: 7,           // Don't take much space
-    bufferSize: 100,           // Balance between performance and memory
-    flushInterval: 1000,       // Reasonable interval
-    archiveFormat: 'zip',     // Good compression
-    compressionLevel: 6,       // Medium compression level
+    retentionDays: 7,           // Не занимать много места
+    bufferSize: 100,           // Баланс между производительностью и памятью
+    flushInterval: 1000,       // Разумный интервал
+    archiveFormat: 'zip',     // Хорошее сжатие
+    compressionLevel: 6,       // Средний уровень сжатия
   },
 });
 ```
 
-### 3. Security
+### 3. Безопасность
 
 ```javascript
 const transport = pino.transport({
   target: 'pino-file-logger-transport',
   options: {
-    logDirectory: '/var/log/my-app',  // Secure directory
+    logDirectory: '/var/log/my-app',  // Безопасная директория
     filename: 'app',
-    level: 'info',  // Don't log debug in production
+    level: 'info',  // Не логировать debug в production
   },
 });
 ```

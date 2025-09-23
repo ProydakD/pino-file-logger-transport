@@ -1,13 +1,13 @@
-# Документация pino-file-logger-transport
+# Documentation pino-file-logger-transport
 
-## Содержание
+## Table of Contents
 
-1. [Возможности](FEATURES.md) - Полное описание всех возможностей транспорта
-2. [Использование](USAGE.md) - Подробное руководство по использованию
-3. [API Reference](API.md) - Справочник по API
-4. [Архитектура](ARCHITECTURE.md) - Внутренняя архитектура и дизайн
+1. [Features](FEATURES.md) - Complete overview of all transport features
+2. [Usage Guide](USAGE.md) - Detailed usage instructions
+3. [API Reference](API.md) - Complete API documentation
+4. [Architecture](ARCHITECTURE.md) - Internal architecture and design
 
-## Быстрый старт
+## Quick Start
 
 ```javascript
 const pino = require('pino');
@@ -26,22 +26,22 @@ const logger = pino(transport);
 logger.info('Hello world');
 ```
 
-## Основные возможности
+## Main Features
 
-- ✅ Запись логов в файлы с настраиваемой директорией и именем файла
-- ✅ Автоматическая ротация логов по календарной дате
-- ✅ Настраиваемый срок хранения логов с автоматической очисткой
-- ✅ Архивация старых логов в различных форматах (ZIP, GZIP, TAR)
-- ✅ Фильтрация логов по уровню
-- ✅ Буферизация для повышения производительности
-- ✅ Обработка ошибок без падения приложения
-- ✅ Совместимость с Pino и его экосистемой
+- ✅ Write logs to files with configurable directory and filename
+- ✅ Automatic log rotation by date
+- ✅ Configurable log retention with automatic cleanup
+- ✅ Archive old logs in various formats (ZIP, GZIP, TAR)
+- ✅ Log level filtering
+- ✅ Buffering for high performance
+- ✅ Error handling without crashing the application
+- ✅ Compatibility with Pino and its ecosystem
 
-## Языки документации
+## Documentation Languages
 
-- [English](../README.md)
-- [Русский](../README_RU.md)
+- [English](README.md)
+- [Русский](README_RU.md)
 
-## Лицензия
+## License
 
 MIT

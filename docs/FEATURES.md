@@ -1,138 +1,140 @@
-# Функциональность
+# Features
 
-## Запись логов в файлы
+[English](FEATURES.md) | [Русский](FEATURES_RU.md)
 
-Транспорт записывает логи в файлы с поддержкой настраиваемой директории и имени файла.
+## Writing Logs to Files
 
-### Конфигурация
+The transport writes logs to files with configurable directory and filename.
+
+### Configuration
 ```javascript
 const transport = pino.transport({
   target: 'pino-file-logger-transport',
   options: {
-    logDirectory: './logs',  // Обязательный параметр
-    filename: 'app',         // Опционально, по умолчанию 'log'
+    logDirectory: './logs',  // Required parameter
+    filename: 'app',         // Optional, default 'log'
   },
 });
 ```
 
-## Ротация логов
+## Log Rotation
 
-Автоматическая ротация логов по календарной дате.
+Automatic log rotation by calendar date.
 
-### Как работает
-- При смене календарной даты создается новый файл
-- Старый файл закрывается
-- Новые логи записываются в файл текущей даты
+### How it Works
+- When calendar date changes, a new file is created
+- Previous file is closed
+- New logs are written to current date file
 
-### Формат имени файла
+### Filename Format
 ```
 filename-YYYY-MM-DD.log
 ```
 
-Пример:
+Example:
 ```
 app-2025-09-23.log
 app-2025-09-24.log
 ```
 
-## Управление хранением логов
+## Log Retention Management
 
-Настройка срока хранения логов.
+Configuration of log retention period.
 
-### Конфигурация
+### Configuration
 ```javascript
 const transport = pino.transport({
   target: 'pino-file-logger-transport',
   options: {
     logDirectory: './logs',
-    retentionDays: 30,  // Хранить логи 30 дней
+    retentionDays: 30,  // Retain logs for 30 days
   },
 });
 ```
 
-### Как работает
-- При инициализации транспорта удаляются файлы старше `retentionDays`
-- При ротации (если включено) также удаляются старые файлы
+### How it Works
+- When transport initializes, files older than `retentionDays` are deleted
+- When rotation occurs (if enabled), old files are also deleted
 
-## Архивация логов
+## Log Archiving
 
-Автоматическая архивация старых логов.
+Automatic archiving of old logs.
 
-### Поддерживаемые форматы
-- **ZIP** - стандартный формат с хорошим сжатием
-- **GZIP (tar.gz)** - формат с совместимостью Unix
-- **TAR** - несжатый архив для максимальной скорости
-- **None** - отключение архивации
+### Supported Formats
+- **ZIP** - Standard format with good compression
+- **GZIP (tar.gz)** - Unix-compatible format
+- **TAR** - Uncompressed archive for maximum speed
+- **None** - Disable archiving
 
-### Конфигурация
+### Configuration
 ```javascript
 const transport = pino.transport({
   target: 'pino-file-logger-transport',
   options: {
     logDirectory: './logs',
-    archiveFormat: 'zip',        // Формат архива
-    compressionLevel: 6,          // Уровень сжатия (0-9)
-    archiveDirectory: './archives', // Отдельная директория для архивов
+    archiveFormat: 'zip',        // Archive format
+    compressionLevel: 6,          // Compression level (0-9)
+    archiveDirectory: './archives', // Separate directory for archives
   },
 });
 ```
 
-### Когда происходит архивация
-1. При закрытии транспорта (по умолчанию)
-2. При ротации логов (опционально, через `archiveOnRotation: true`)
+### When Archiving Occurs
+1. When transport closes (default)
+2. When log rotation occurs (optional, via `archiveOnRotation: true`)
 
-## Фильтрация по уровню логов
+## Log Level Filtering
 
-Запись только логов определенного уровня и выше.
+Writing only logs of certain level and above.
 
-### Конфигурация
+### Configuration
 ```javascript
 const transport = pino.transport({
   target: 'pino-file-logger-transport',
   options: {
     logDirectory: './logs',
-    level: 'warn',  // Записывать только warn и выше (error, fatal)
+    level: 'warn',  // Write only warn and above (error, fatal)
   },
 });
 ```
 
-### Поддерживаемые уровни
-- `silent` - не писать ничего
-- `fatal` - только фатальные ошибки
-- `error` - ошибки и фатальные ошибки
-- `warn` - предупреждения, ошибки и фатальные ошибки
-- `info` - информационные сообщения и выше (по умолчанию)
-- `debug` - отладочные сообщения и выше
-- `trace` - трассировочные сообщения и выше
+### Supported Levels
+- `silent` - Write nothing
+- `fatal` - Only fatal errors
+- `error` - Errors and fatal errors
+- `warn` - Warnings, errors and fatal errors
+- `info` - Informational messages and above (default)
+- `debug` - Debug messages and above
+- `trace` - Trace messages and above
 
-## Буферизация для производительности
+## Buffering for Performance
 
-Оптимизация производительности через буферизацию записей.
+Performance optimization through log buffering.
 
-### Конфигурация
+### Configuration
 ```javascript
 const transport = pino.transport({
   target: 'pino-file-logger-transport',
   options: {
     logDirectory: './logs',
-    bufferSize: 50,     // Размер буфера
-    flushInterval: 500, // Интервал сброса в миллисекундах
+    bufferSize: 50,     // Buffer size
+    flushInterval: 500, // Flush interval in milliseconds
   },
 });
 ```
 
-### Как работает
-- Логи собираются в буфере
-- Буфер записывается в файл при достижении `bufferSize`
-- Буфер записывается по таймеру `flushInterval`
-- Оставшиеся логи записываются при закрытии транспорта
+### How it Works
+- Logs are collected in buffer
+- Buffer is written to file when `bufferSize` is reached
+- Buffer is written by timer `flushInterval`
+- Remaining logs are written when transport closes
 
-## Обработка ошибок
+## Error Handling
 
-Надежная обработка ошибок файловой системы.
+Reliable file system error handling.
 
-### Как работает
-- Ошибки записи не приводят к падению приложения
-- Резервная запись в консоль при проблемах с файлами
-- Логирование всех ошибок для диагностики
-- Продолжение работы при недоступности директории
+### How it Works
+- Writing errors do not cause application crashes
+- Backup writing to console when file problems occur
+- Logging all errors for diagnostics
+- Continuing operation when directory is unavailable
