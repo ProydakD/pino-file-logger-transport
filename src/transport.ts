@@ -5,7 +5,7 @@
  */
 
 import build from 'pino-abstract-transport';
-import { createWriteStream } from 'fs';
+import { createWriteStream, WriteStream } from 'fs';
 import { mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
@@ -42,15 +42,40 @@ export default function fileTransport(options: FileTransportOptions) {
     mkdirSync(logDirectory, { recursive: true });
   }
 
-  // Create the log file path
-  const logFilePath = join(logDirectory, `${filename}.log`);
+  // Get current date for filename
+  const getCurrentDate = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
+  // Create the log file path with date
+  const currentDate = getCurrentDate();
+  const logFilePath = join(logDirectory, `${filename}-${currentDate}.log`);
 
   // Create write stream
-  const stream = createWriteStream(logFilePath, { flags: 'a' });
+  let stream: WriteStream = createWriteStream(logFilePath, { flags: 'a' });
+  let lastDate = currentDate;
 
   return build(
     async function (source) {
       for await (const obj of source) {
+        // Check if date has changed
+        const currentDate = getCurrentDate();
+        if (currentDate !== lastDate) {
+          // Close current stream
+          stream.end();
+
+          // Wait for the stream to finish
+          await new Promise((resolve) =>
+            stream.once('finish', () => resolve(undefined)),
+          );
+
+          // Create new stream with new date
+          const newLogFilePath = join(logDirectory, `${filename}-${currentDate}.log`);
+          stream = createWriteStream(newLogFilePath, { flags: 'a' });
+          lastDate = currentDate;
+        }
+
         // Write the log object to the file
         const toDrain = !stream.write(JSON.stringify(obj) + '\n');
         // If the stream needs to drain, wait for it
