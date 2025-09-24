@@ -1,5 +1,6 @@
-import { createWriteStream, mkdirSync, existsSync } from 'fs';
+import { mkdirSync, existsSync } from 'fs';
 import { Writable } from 'stream';
+import SonicBoom from 'sonic-boom';
 
 /**
  * Ensures that the log directory exists, creating it if necessary
@@ -35,14 +36,14 @@ export function getCurrentDate(): string {
  */
 export function createLogFileStream(logFilePath: string): Writable {
   try {
-    const stream = createWriteStream(logFilePath, { flags: 'a' });
+    const stream = new SonicBoom({ dest: logFilePath, append: true });
     
     // Handle stream errors
     stream.on('error', (error) => {
       console.error('Error in write stream:', error);
     });
     
-    return stream;
+    return stream as unknown as Writable;
   } catch (error) {
     console.error('Error creating write stream:', error);
     // Create a dummy stream that writes to console as fallback
