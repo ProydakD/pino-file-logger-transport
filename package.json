@@ -1,6 +1,6 @@
 {
   "name": "pino-file-logger-transport",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "A Pino transport for file logging with rotation and archiving capabilities",
   "keywords": [
     "pino",

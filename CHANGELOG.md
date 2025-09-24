@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### [1.4.2](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.1...v1.4.2) (2025-09-24)
+
+
+### Changed
+
+* **transport:** вынесена обработка файлов директории в функцию processDirectoryFiles ([1823f95](https://github.com/ProydakD/pino-file-logger-transport/commit/1823f9507ea6b5c790cd0caa8e6fc345261f7de8))
+
+
+### Fixed
+
+* **docs:** исправлен путь к файлу возможностей ([4a1c89c](https://github.com/ProydakD/pino-file-logger-transport/commit/4a1c89c0a93f28a8e57fb405394102d2e3bb7495))
+
 ### [1.4.1](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.0...v1.4.1) (2025-09-23)
 
 
