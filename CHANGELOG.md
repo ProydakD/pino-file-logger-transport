@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### [1.4.3](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.2...v1.4.3) (2025-09-24)
+
+
+### Changed
+
+* **file-system:** createWriteStream заменён на SonicBoom ([70eef2c](https://github.com/ProydakD/pino-file-logger-transport/commit/70eef2ca056e46743b68d397c7e5bca40f6fc6ef))
+* **utils:** выделены утилиты для ротации, очистки, архивации и буферизации логов ([2e0de0b](https://github.com/ProydakD/pino-file-logger-transport/commit/2e0de0b39776f958742a29f75972a7bdec5e2f7e))
+
 ### [1.4.2](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.1...v1.4.2) (2025-09-24)
 
 
