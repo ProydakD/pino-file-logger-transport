@@ -668,6 +668,46 @@ function deleteFileIfExists(filePath: string): void {
 }
 
 /**
+ * Processes files in a directory for cleanup
+ *
+ * @param directory - Directory to process
+ * @param filename - Base filename for log files
+ * @param cutoffDate - Cutoff date for file retention
+ */
+function processDirectoryFiles(
+  directory: string,
+  filename: string,
+  cutoffDate: Date,
+): void {
+  try {
+    // Get all files in directory
+    const files = readdirSync(directory);
+
+    // Filter files that match our pattern
+    const relevantFiles = filterRelevantFiles(files, filename);
+
+    // Check each file
+    for (const file of relevantFiles) {
+      try {
+        // Extract date from filename
+        const fileDate = extractDateFromFilename(file);
+        if (fileDate) {
+          // If file is older than cutoff date, delete it
+          if (fileDate < cutoffDate) {
+            const filePath = join(directory, file);
+            deleteFileIfExists(filePath);
+          }
+        }
+      } catch (fileError) {
+        console.error(`Error processing file ${file}:`, fileError);
+      }
+    }
+  } catch (error) {
+    console.error(`Error processing directory ${directory}:`, error);
+  }
+}
+
+/**
  * Clean up old log files and archives based on retention days
  *
  * @param logDirectory - Directory containing log files
@@ -685,56 +725,15 @@ function cleanupOldFiles(
     // Calculate cutoff date
     const cutoffDate = calculateCutoffDate(retentionDays);
 
-    // Get all files in log directory
-    const files = readdirSync(logDirectory);
-
-    // Filter files that match our pattern
-    const relevantFiles = filterRelevantFiles(files, filename);
-
-    // Check each file
-    for (const file of relevantFiles) {
-      try {
-        // Extract date from filename
-        const fileDate = extractDateFromFilename(file);
-        if (fileDate) {
-          // If file is older than cutoff date, delete it
-          if (fileDate < cutoffDate) {
-            const filePath = join(logDirectory, file);
-            deleteFileIfExists(filePath);
-          }
-        }
-      } catch (fileError) {
-        console.error(`Error processing file ${file}:`, fileError);
-      }
-    }
+    // Process files in log directory
+    processDirectoryFiles(logDirectory, filename, cutoffDate);
     
-    // If archive directory is specified and different from log directory, check it too
+    // If archive directory is specified and different from log directory, process it too
     if (archiveDirectory && archiveDirectory !== logDirectory) {
       try {
         // Check if archive directory exists before trying to read it
         if (existsSync(archiveDirectory)) {
-          // Get all files in archive directory
-          const archiveFiles = readdirSync(archiveDirectory);
-
-          // Filter files that match our pattern
-          const relevantArchiveFiles = filterRelevantFiles(archiveFiles, filename);
-
-          // Check each archive file
-          for (const file of relevantArchiveFiles) {
-            try {
-              // Extract date from filename
-              const fileDate = extractDateFromFilename(file);
-              if (fileDate) {
-                // If file is older than cutoff date, delete it
-                if (fileDate < cutoffDate) {
-                  const filePath = join(archiveDirectory, file);
-                  deleteFileIfExists(filePath);
-                }
-              }
-            } catch (fileError) {
-              console.error(`Error processing archive file ${file}:`, fileError);
-            }
-          }
+          processDirectoryFiles(archiveDirectory, filename, cutoffDate);
         }
       } catch (archiveDirError) {
         console.error('Error accessing archive directory:', archiveDirError);
