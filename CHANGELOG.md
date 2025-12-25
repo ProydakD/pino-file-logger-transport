@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### [1.4.4](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.3...v1.4.4) (2025-12-25)
+
+
+### Fixed
+
+* Исправлена ошибка завершения архивации с обработкой ошибок ([077638e](https://github.com/ProydakD/pino-file-logger-transport/commit/077638ed9bcd7e155aa1ad09e4490002793f515f))
+* исправлена ошибка с выводом fallback stream в stderr ([44494b8](https://github.com/ProydakD/pino-file-logger-transport/commit/44494b8acb4e5ec866e76078752850be1613690d))
+* обработка некорректных значений retentionDays в file-cleanup.ts ([64c489b](https://github.com/ProydakD/pino-file-logger-transport/commit/64c489b84e442b77cc6addcf37eb790313aecc85))
+
 ### [1.4.3](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.2...v1.4.3) (2025-09-24)
 
 
