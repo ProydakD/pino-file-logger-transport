@@ -4,8 +4,20 @@
  * A transport for Pino that writes logs to files with rotation and archiving capabilities.
  */
 
-import build from 'pino-abstract-transport';
+import { basename, join } from 'path';
 import { Writable } from 'stream';
+import build from 'pino-abstract-transport';
+
+import { archiveLogFiles } from './utils/archiver';
+import { flushBuffer, scheduleFlush } from './utils/buffer';
+import { cleanupOldFiles } from './utils/file-cleanup';
+import {
+  createLogFileStream,
+  ensureLogDirectoryExists,
+  getCurrentDate,
+} from './utils/file-system';
+import { PinoLogEntry, shouldWriteLog } from './utils/level-filter';
+import { rotateLogFile } from './utils/file-rotation';
 
 export interface FileTransportOptions {
   /**
@@ -73,15 +85,6 @@ export interface FileTransportOptions {
    */
   archiveOnRotation?: boolean;
 }
-
-import { PinoLogEntry } from './utils/level-filter';
-import { basename, join } from 'path';
-import { shouldWriteLog } from './utils/level-filter';
-import { ensureLogDirectoryExists, getCurrentDate, createLogFileStream } from './utils/file-system';
-import { flushBuffer, scheduleFlush } from './utils/buffer';
-import { archiveLogFiles } from './utils/archiver';
-import { rotateLogFile } from './utils/file-rotation';
-import { cleanupOldFiles } from './utils/file-cleanup';
 
 /**
  * Creates a file transport for Pino logger
