@@ -1,30 +1,29 @@
+import { once } from 'events';
 import { Writable } from 'stream';
 
 /**
- * Flushes the buffer to the stream
+ * Flushes the buffer to the stream, respecting backpressure
  *
  * @param buffer - Buffer containing log entries
  * @param stream - Write stream to flush to
- * @returns Updated empty buffer
  */
-export function flushBuffer(buffer: string[], stream: Writable): string[] {
+export async function flushBuffer(
+  buffer: string[],
+  stream: Writable,
+): Promise<void> {
   if (buffer.length > 0) {
     try {
       const data = buffer.join('');
-      
+
       const toDrain = !stream.write(data);
       // If the stream needs to drain, wait for it
       if (toDrain) {
-        stream.once('drain', () => {
-          // Continue processing
-        });
+        await once(stream, 'drain');
       }
     } catch (error) {
       console.error('Error writing buffer to stream:', error);
     }
   }
-  
-  return [];
 }
 
 /**

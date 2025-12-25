@@ -129,21 +129,36 @@ export default function fileTransport(options: FileTransportOptions) {
   // Buffer for batching writes
   let buffer: string[] = [];
   let flushTimer: NodeJS.Timeout | null = null;
+  let flushInFlight: Promise<void> | null = null;
 
   // Function to flush buffer to stream
-  const handleFlushBuffer = () => {
-    buffer = flushBuffer(buffer, stream);
-
+  const handleFlushBuffer = async () => {
     // Clear timer
     if (flushTimer) {
       clearTimeout(flushTimer);
       flushTimer = null;
     }
+
+    if (!flushInFlight) {
+      flushInFlight = (async () => {
+        while (buffer.length > 0) {
+          const currentBuffer = buffer;
+          buffer = [];
+          await flushBuffer(currentBuffer, stream);
+        }
+      })().finally(() => {
+        flushInFlight = null;
+      });
+    }
+
+    await flushInFlight;
   };
 
   // Function to schedule buffer flush
   const handleScheduleFlush = () => {
-    flushTimer = scheduleFlush(flushTimer, handleFlushBuffer, flushInterval);
+    flushTimer = scheduleFlush(flushTimer, () => {
+      void handleFlushBuffer();
+    }, flushInterval);
   };
 
   return build(
@@ -159,7 +174,7 @@ export default function fileTransport(options: FileTransportOptions) {
           const currentDate = getCurrentDate();
           if (currentDate !== lastDate) {
             // Flush buffer before rotating
-            handleFlushBuffer();
+            await handleFlushBuffer();
 
             // Rotate log file
             stream = await rotateLogFile(
@@ -182,7 +197,7 @@ export default function fileTransport(options: FileTransportOptions) {
 
           // Flush buffer if it reaches bufferSize
           if (buffer.length >= bufferSize) {
-            handleFlushBuffer();
+            await handleFlushBuffer();
           } else {
             // Schedule flush if not already scheduled
             handleScheduleFlush();
@@ -194,13 +209,13 @@ export default function fileTransport(options: FileTransportOptions) {
       }
 
       // Flush remaining buffer when source ends
-      handleFlushBuffer();
+      await handleFlushBuffer();
     },
     {
       async close() {
         try {
           // Flush any remaining buffer
-          handleFlushBuffer();
+          await handleFlushBuffer();
 
           stream.end();
           // Wait for the stream to finish
