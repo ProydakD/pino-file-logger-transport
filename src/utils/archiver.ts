@@ -105,14 +105,39 @@ async function archiveSingleLogFile(
         throw new Error(`Unsupported archive format: ${archiveFormat}`);
     }
 
+    // Wait for archive output to finish before removing the source file.
+    const outputFinished = new Promise<void>((resolve) => {
+      output.once('close', resolve);
+      output.once('finish', resolve);
+    });
+
+    // Surface any archive/output errors (warnings are only ignored for ENOENT).
+    const errorPromise = new Promise<never>((_resolve, reject) => {
+      output.once('error', reject);
+      archive.once('error', reject);
+      archive.once('warning', (warning) => {
+        const error = warning as NodeJS.ErrnoException;
+        if (error.code === 'ENOENT') {
+          console.warn('Archive warning:', warning);
+          return;
+        }
+        reject(warning);
+      });
+    });
+
     // Pipe archive data to the file
     archive.pipe(output);
 
     // Append file to archive
     archive.file(logFilePath, { name: logFile });
 
-    // Finalize the archive
-    await archive.finalize();
+    await Promise.race([
+      errorPromise,
+      (async () => {
+        await archive.finalize();
+        await outputFinished;
+      })(),
+    ]);
 
     // Remove original file after archiving
     try {
