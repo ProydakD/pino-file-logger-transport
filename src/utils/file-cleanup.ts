@@ -113,6 +113,14 @@ export function cleanupOldFiles(
   archiveDirectory?: string,
 ): void {
   try {
+    if (!Number.isFinite(retentionDays) || retentionDays < 0) {
+      console.warn(
+        'Invalid retentionDays value, skipping cleanup:',
+        retentionDays,
+      );
+      return;
+    }
+
     // Calculate cutoff date
     const cutoffDate = calculateCutoffDate(retentionDays);
 

@@ -230,6 +230,25 @@ describe('File Transport', () => {
     }
   });
 
+  it('should skip cleanup when retentionDays is negative', () => {
+    const filename = 'cleanup-invalid-test';
+    const retentionDays = -5;
+
+    const oldDate = new Date();
+    oldDate.setDate(oldDate.getDate() - 10);
+    const oldDateString = `${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, '0')}-${String(oldDate.getDate()).padStart(2, '0')}`;
+    const oldLogFile = join(testDir, `${filename}-${oldDateString}.log`);
+    writeFileSync(oldLogFile, 'old log content');
+
+    fileTransport({
+      logDirectory: testDir,
+      filename,
+      retentionDays,
+    });
+
+    expect(existsSync(oldLogFile)).toBe(true);
+  });
+
   it('should not crash when log directory is not accessible', () => {
     const inaccessibleDir = join(testDir, 'inaccessible');
 
