@@ -1,6 +1,9 @@
+import type { LogLevel } from '../types';
+
 /**
  * Pino log entry interface
  */
+
 export interface PinoLogEntry {
   level: number;
   time: number;
@@ -16,7 +19,7 @@ export interface PinoLogEntry {
  * @param level - Log level string
  * @returns Numeric value of the log level (higher means more verbose)
  */
-function getLevelValue(level: string): number {
+function getLevelValue(level: LogLevel): number {
   switch (level) {
     case 'silent': return 0;
     case 'fatal': return 1;
@@ -36,7 +39,10 @@ function getLevelValue(level: string): number {
  * @param configuredLevel - Configured minimum log level
  * @returns True if log entry should be written, false otherwise
  */
-export function shouldWriteLog(obj: PinoLogEntry, configuredLevel: string): boolean {
+export function shouldWriteLog(
+  obj: PinoLogEntry,
+  configuredLevel: LogLevel,
+): boolean {
   // If configured level is silent, don't write anything
   if (configuredLevel === 'silent') {
     return false;
@@ -46,7 +52,7 @@ export function shouldWriteLog(obj: PinoLogEntry, configuredLevel: string): bool
   const logLevel = obj.level ? obj.level : 30; // 30 is info level in Pino
   
   // Convert Pino numeric levels to string levels for comparison
-  let logLevelStr: string;
+  let logLevelStr: LogLevel;
   switch (logLevel) {
     case 10: logLevelStr = 'trace'; break;
     case 20: logLevelStr = 'debug'; break;

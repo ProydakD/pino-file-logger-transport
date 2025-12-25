@@ -8,6 +8,7 @@ import { basename, join } from 'path';
 import { Writable } from 'stream';
 import build from 'pino-abstract-transport';
 
+import type { ArchiveFormat, LogLevel } from './types';
 import { archiveLogFiles } from './utils/archiver';
 import { flushBuffer, scheduleFlush } from './utils/buffer';
 import { cleanupOldFiles } from './utils/file-cleanup';
@@ -53,13 +54,13 @@ export interface FileTransportOptions {
    * Minimum log level to write to file
    * @default 'info'
    */
-  level?: 'fatal' | 'error' | 'warn' | 'info' | 'debug' | 'trace' | 'silent';
+  level?: LogLevel;
 
   /**
    * Archive format for old log files
    * @default 'zip'
    */
-  archiveFormat?: 'zip' | 'gzip' | 'tar' | 'none';
+  archiveFormat?: ArchiveFormat;
 
   /**
    * Compression level for archives (0-9, where 9 is maximum compression)

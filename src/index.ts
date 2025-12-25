@@ -6,3 +6,4 @@
 
 export { default } from './transport';
 export type { FileTransportOptions } from './transport';
+export type { ArchiveFormat, LogLevel } from './types';

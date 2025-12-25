@@ -1,6 +1,7 @@
 import { createWriteStream, existsSync, readdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import archiver from 'archiver';
+import type { ArchiveFormat } from '../types';
 import { ensureLogDirectoryExists } from './file-system';
 
 /**
@@ -17,7 +18,7 @@ export async function archiveLogFiles(
   logDirectory: string,
   filename: string,
   currentDate: string,
-  archiveFormat: 'zip' | 'gzip' | 'tar' | 'none' = 'zip',
+  archiveFormat: ArchiveFormat = 'zip',
   compressionLevel: number = 6,
   archiveDirectory?: string,
 ): Promise<void> {
@@ -60,7 +61,7 @@ export async function archiveLogFiles(
 async function archiveSingleLogFile(
   logDirectory: string,
   logFile: string,
-  archiveFormat: 'zip' | 'gzip' | 'tar' | 'none' = 'zip',
+  archiveFormat: ArchiveFormat = 'zip',
   compressionLevel: number = 6,
   archiveDirectory?: string,
 ): Promise<void> {
@@ -159,7 +160,7 @@ async function archiveSingleLogFile(
  * @param archiveFormat - Archive format
  * @returns Archive file extension
  */
-function getArchiveExtension(archiveFormat: 'zip' | 'gzip' | 'tar' | 'none'): string {
+function getArchiveExtension(archiveFormat: ArchiveFormat): string {
   switch (archiveFormat) {
     case 'zip': return '.zip';
     case 'gzip': return '.tar.gz';

@@ -1,5 +1,6 @@
 import { Writable } from 'stream';
 import { join } from 'path';
+import type { ArchiveFormat } from '../types';
 import { archiveLogFiles } from './archiver';
 import { createLogFileStream } from './file-system';
 import { cleanupOldFiles } from './file-cleanup';
@@ -10,7 +11,7 @@ export async function rotateLogFile(
   filename: string,
   currentDate: string,
   retentionDays: number,
-  archiveFormat: 'zip' | 'gzip' | 'tar' | 'none' = 'zip',
+  archiveFormat: ArchiveFormat = 'zip',
   compressionLevel: number = 6,
   archiveDirectory?: string,
   cleanupOnRotation: boolean = true,
