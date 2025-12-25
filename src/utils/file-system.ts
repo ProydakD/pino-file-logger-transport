@@ -32,7 +32,7 @@ export function getCurrentDate(): string {
  * Creates a write stream for the log file
  *
  * @param logFilePath - Path to the log file
- * @returns Write stream or fallback console stream
+ * @returns Write stream or fallback stderr stream
  */
 export function createLogFileStream(logFilePath: string): Writable {
   try {
@@ -46,10 +46,10 @@ export function createLogFileStream(logFilePath: string): Writable {
     return stream as unknown as Writable;
   } catch (error) {
     console.error('Error creating write stream:', error);
-    // Create a dummy stream that writes to console as fallback
+    // Create a dummy stream that writes to stderr as fallback
     const fallbackStream = new Writable({
       write(chunk: unknown, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
-        console.log('FALLBACK:', (chunk as { toString: () => string }).toString());
+        console.error('FALLBACK:', (chunk as { toString: () => string }).toString());
         callback();
       },
     });
