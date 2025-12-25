@@ -64,16 +64,9 @@ async function archiveSingleLogFile(
   compressionLevel: number = 6,
   archiveDirectory?: string,
 ): Promise<void> {
-  // If archive format is 'none', just remove the file
+  // If archive format is 'none', skip archiving and keep the file
   if (archiveFormat === 'none') {
-    try {
-      const logFilePath = join(logDirectory, logFile);
-      unlinkSync(logFilePath);
-      return;
-    } catch (error) {
-      console.error(`Error removing file ${logFile}:`, error);
-      return;
-    }
+    return;
   }
 
   const logFilePath = join(logDirectory, logFile);

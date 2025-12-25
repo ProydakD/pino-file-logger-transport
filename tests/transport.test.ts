@@ -162,6 +162,34 @@ describe('File Transport', () => {
     });
   });
 
+  it('should keep log files when archive format is none', async () => {
+    const filename = 'archive-none-test';
+
+    // Create a mock previous log file
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayString = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    const previousLogFile = join(testDir, `${filename}-${yesterdayString}.log`);
+    writeFileSync(previousLogFile, 'test content');
+
+    // Create transport with archive format disabled
+    const transport = fileTransport({
+      logDirectory: testDir,
+      filename,
+      archiveFormat: 'none',
+    });
+
+    // Write log
+    transport.write(JSON.stringify({ msg: 'test log' }) + '\n');
+    transport.end();
+
+    // Wait for close/archiving cycle
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    // Previous log file should still exist
+    expect(existsSync(previousLogFile)).toBe(true);
+  });
+
   it('should clean up old files based on retention days', () => {
     const filename = 'cleanup-test';
     const retentionDays = 3;
