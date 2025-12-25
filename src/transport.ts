@@ -75,7 +75,7 @@ export interface FileTransportOptions {
 }
 
 import { PinoLogEntry } from './utils/level-filter';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { shouldWriteLog } from './utils/level-filter';
 import { ensureLogDirectoryExists, getCurrentDate, createLogFileStream } from './utils/file-system';
 import { flushBuffer, scheduleFlush } from './utils/buffer';
@@ -104,12 +104,14 @@ export default function fileTransport(options: FileTransportOptions) {
     archiveOnRotation = false,
   } = options;
 
+  const safeFilename = normalizeFilename(filename, 'log');
+
   try {
     // Ensure log directory exists
     ensureLogDirectoryExists(logDirectory);
 
     // Clean up old files based on retentionDays
-    cleanupOldFiles(logDirectory, filename, retentionDays, archiveDirectory);
+    cleanupOldFiles(logDirectory, safeFilename, retentionDays, archiveDirectory);
   } catch (error) {
     console.error('Error initializing file transport:', error);
     // Continue execution even if initialization fails
@@ -117,9 +119,12 @@ export default function fileTransport(options: FileTransportOptions) {
 
   // Get current date for filename
   const currentDate = getCurrentDate();
-  
+
   // Create the log file path with date
-  const logFilePath = join(logDirectory, `${filename}-${currentDate}.log`);
+  const logFilePath = join(
+    logDirectory,
+    `${safeFilename}-${currentDate}.log`,
+  );
   
   // Create write stream
   let stream: Writable = createLogFileStream(logFilePath);
@@ -178,10 +183,10 @@ export default function fileTransport(options: FileTransportOptions) {
 
             // Rotate log file
             stream = await rotateLogFile(
-              stream, 
-              logDirectory, 
-              filename, 
-              currentDate, 
+              stream,
+              logDirectory,
+              safeFilename,
+              currentDate,
               retentionDays,
               archiveFormat,
               compressionLevel,
@@ -225,8 +230,8 @@ export default function fileTransport(options: FileTransportOptions) {
 
           // Archive all log files in the directory
           await archiveLogFiles(
-            logDirectory, 
-            filename, 
+            logDirectory,
+            safeFilename,
             getCurrentDate(),
             archiveFormat,
             compressionLevel,
@@ -238,4 +243,18 @@ export default function fileTransport(options: FileTransportOptions) {
       },
     },
   );
+}
+
+function normalizeFilename(filename: string, fallback: string): string {
+  const base = basename(filename);
+  if (!base || base === '.' || base === '..') {
+    console.warn('Invalid filename, using fallback:', filename);
+    return fallback;
+  }
+
+  if (base !== filename) {
+    console.warn('Filename contains path separators, using basename:', filename);
+  }
+
+  return base;
 }

@@ -97,6 +97,24 @@ describe('File Transport', () => {
     expect(files).toContain(`log-${dateString}.log`);
   });
 
+  it('should sanitize filename with path separators', async () => {
+    const unsafeFilename = join('nested', 'unsafe-name');
+    const transport = fileTransport({
+      logDirectory: testDir,
+      filename: unsafeFilename,
+    });
+
+    transport.write(JSON.stringify({ msg: 'test' }) + '\n');
+    transport.end();
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    const files = readdirSync(testDir);
+    const date = new Date();
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    expect(files).toContain(`unsafe-name-${dateString}.log`);
+  });
+
   it('should create new file when date changes', async () => {
     const filename = 'date-test';
     const transport = fileTransport({
