@@ -308,6 +308,102 @@ describe('File Transport', () => {
     expect(files).toContain(`${filename}-${dateString}.log`);
   });
 
+  it('should rotate files by size when maxFileSizeMB is reached', async () => {
+    const filename = 'size-rotation-test';
+    const transport = fileTransport({
+      logDirectory: testDir,
+      filename,
+      archiveFormat: 'none',
+      bufferSize: 1,
+      flushInterval: 10,
+      maxFileSizeMB: 0.0001, // ~104 bytes
+    });
+
+    for (let i = 0; i < 12; i++) {
+      transport.write(
+        JSON.stringify({
+          msg: `payload-${i}-${'x'.repeat(70)}`,
+        }) + '\n',
+      );
+    }
+
+    transport.end();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    const date = new Date();
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const files = readdirSync(testDir).filter(
+      (file) =>
+        file.startsWith(`${filename}-${dateString}`) && file.endsWith('.log'),
+    );
+
+    expect(files).toContain(`${filename}-${dateString}.log`);
+    expect(files).toContain(`${filename}-${dateString}-1.log`);
+    expect(files.length).toBeGreaterThan(1);
+  });
+
+  it('should not rotate by size when maxFileSizeMB is not reached', async () => {
+    const filename = 'size-no-rotation-test';
+    const transport = fileTransport({
+      logDirectory: testDir,
+      filename,
+      archiveFormat: 'none',
+      bufferSize: 1,
+      flushInterval: 10,
+      maxFileSizeMB: 1,
+    });
+
+    for (let i = 0; i < 6; i++) {
+      transport.write(JSON.stringify({ msg: `short-${i}` }) + '\n');
+    }
+
+    transport.end();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const date = new Date();
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const files = readdirSync(testDir).filter(
+      (file) =>
+        file.startsWith(`${filename}-${dateString}`) && file.endsWith('.log'),
+    );
+
+    expect(files).toContain(`${filename}-${dateString}.log`);
+    expect(files.some((file) => file.includes(`-${dateString}-`))).toBe(false);
+  });
+
+  it('should respect maxFiles during cleanup and keep active file', async () => {
+    const filename = 'max-files-test';
+
+    for (let i = 1; i <= 4; i++) {
+      const oldDate = new Date();
+      oldDate.setDate(oldDate.getDate() - (20 + i));
+      const oldDateString = `${oldDate.getFullYear()}-${String(oldDate.getMonth() + 1).padStart(2, '0')}-${String(oldDate.getDate()).padStart(2, '0')}`;
+      const oldLogFile = join(testDir, `${filename}-${oldDateString}.log`);
+      writeFileSync(oldLogFile, `old-${i}`);
+    }
+
+    const transport = fileTransport({
+      logDirectory: testDir,
+      filename,
+      archiveFormat: 'none',
+      retentionDays: 3650,
+      maxFiles: 2,
+    });
+
+    transport.write(JSON.stringify({ msg: 'active file content' }) + '\n');
+    transport.end();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
+    const date = new Date();
+    const dateString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const files = readdirSync(testDir).filter(
+      (file) => file.startsWith(filename) && file.endsWith('.log'),
+    );
+
+    expect(files).toContain(`${filename}-${dateString}.log`);
+    expect(files.length).toBeLessThanOrEqual(2);
+  });
+
   it('should filter logs by level when level option is provided', async () => {
     const filename = 'level-test';
 
