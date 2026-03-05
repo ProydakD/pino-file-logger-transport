@@ -4,6 +4,8 @@
  * A transport for Pino that writes logs to files with rotation and archiving capabilities.
  */
 
+import { statSync } from 'fs';
+import { once } from 'events';
 import { basename, join } from 'path';
 import { Writable } from 'stream';
 import build from 'pino-abstract-transport';
@@ -85,6 +87,18 @@ export interface FileTransportOptions {
    * @default false
    */
   archiveOnRotation?: boolean;
+
+  /**
+   * Maximum file size in MB before rotating to indexed file in current day
+   * @default undefined (disabled)
+   */
+  maxFileSizeMB?: number;
+
+  /**
+   * Maximum amount of managed files to keep per directory
+   * @default undefined (disabled)
+   */
+  maxFiles?: number;
 }
 
 /**
@@ -106,39 +120,116 @@ export default function fileTransport(options: FileTransportOptions) {
     archiveDirectory,
     cleanupOnRotation = true,
     archiveOnRotation = false,
+    maxFileSizeMB,
+    maxFiles,
   } = options;
 
   const safeFilename = normalizeFilename(filename, 'log');
+  const normalizedMaxFileSizeMB = normalizeMaxFileSizeMB(maxFileSizeMB);
+  const maxFileSizeBytes =
+    normalizedMaxFileSizeMB !== undefined
+      ? Math.max(1, Math.floor(normalizedMaxFileSizeMB * 1024 * 1024))
+      : undefined;
+  const normalizedMaxFiles = normalizeMaxFiles(maxFiles);
+  let currentDate = getCurrentDate();
+  let currentFileIndex = 0;
+  let activeLogFilename = formatLogFilename(
+    safeFilename,
+    currentDate,
+    currentFileIndex,
+  );
+  const getActiveLogPath = () => join(logDirectory, activeLogFilename);
 
   try {
     // Ensure log directory exists
     ensureLogDirectoryExists(logDirectory);
-
-    // Clean up old files based on retentionDays
-    cleanupOldFiles(logDirectory, safeFilename, retentionDays, archiveDirectory);
   } catch (error) {
     console.error('Error initializing file transport:', error);
     // Continue execution even if initialization fails
   }
-
-  // Get current date for filename
-  const currentDate = getCurrentDate();
-
-  // Create the log file path with date
-  const logFilePath = join(
-    logDirectory,
-    `${safeFilename}-${currentDate}.log`,
-  );
   
   // Create write stream
-  let stream: Writable = createLogFileStream(logFilePath);
+  let stream: Writable = createLogFileStream(getActiveLogPath());
+  let currentFileSize = getFileSizeSafe(getActiveLogPath());
 
-  let lastDate = currentDate;
+  try {
+    // Clean up old files based on retentionDays/maxFiles.
+    cleanupOldFiles(
+      logDirectory,
+      safeFilename,
+      retentionDays,
+      archiveDirectory,
+      normalizedMaxFiles,
+      [activeLogFilename],
+    );
+  } catch (error) {
+    console.error('Error running initial cleanup:', error);
+  }
 
   // Buffer for batching writes
   let buffer: string[] = [];
   let flushTimer: NodeJS.Timeout | null = null;
   let flushInFlight: Promise<void> | null = null;
+
+  const rotateBySizeIfNeeded = async (entry: string): Promise<void> => {
+    if (maxFileSizeBytes === undefined) {
+      return;
+    }
+
+    const entrySize = Buffer.byteLength(entry);
+    const exceedsCurrentFileSize =
+      currentFileSize > 0 && currentFileSize + entrySize > maxFileSizeBytes;
+
+    if (exceedsCurrentFileSize) {
+      try {
+        await closeStream(stream);
+      } catch (error) {
+        console.error('Error rotating log file by size:', error);
+      }
+
+      currentFileIndex += 1;
+      activeLogFilename = formatLogFilename(
+        safeFilename,
+        currentDate,
+        currentFileIndex,
+      );
+
+      stream = createLogFileStream(getActiveLogPath());
+      currentFileSize = getFileSizeSafe(getActiveLogPath());
+
+      if (cleanupOnRotation) {
+        cleanupOldFiles(
+          logDirectory,
+          safeFilename,
+          retentionDays,
+          archiveDirectory,
+          normalizedMaxFiles,
+          [activeLogFilename],
+        );
+      }
+    } else if (currentFileSize === 0 && entrySize > maxFileSizeBytes) {
+      console.warn(
+        'Log entry exceeds maxFileSizeMB and will be written as a single chunk.',
+      );
+    }
+  };
+
+  const flushCurrentBuffer = async (currentBuffer: string[]) => {
+    if (currentBuffer.length === 0) {
+      return;
+    }
+
+    if (maxFileSizeBytes === undefined) {
+      await flushBuffer(currentBuffer, stream);
+      return;
+    }
+
+    for (const entry of currentBuffer) {
+      await rotateBySizeIfNeeded(entry);
+      await writeToStream(stream, entry);
+      currentFileSize += Buffer.byteLength(entry);
+    }
+  };
 
   // Function to flush buffer to stream
   const handleFlushBuffer = async () => {
@@ -153,7 +244,7 @@ export default function fileTransport(options: FileTransportOptions) {
         while (buffer.length > 0) {
           const currentBuffer = buffer;
           buffer = [];
-          await flushBuffer(currentBuffer, stream);
+          await flushCurrentBuffer(currentBuffer);
         }
       })().finally(() => {
         flushInFlight = null;
@@ -180,25 +271,35 @@ export default function fileTransport(options: FileTransportOptions) {
           }
 
           // Check if date has changed
-          const currentDate = getCurrentDate();
-          if (currentDate !== lastDate) {
+          const nextDate = getCurrentDate();
+          if (nextDate !== currentDate) {
             // Flush buffer before rotating
             await handleFlushBuffer();
+
+            currentFileIndex = 0;
+            const nextActiveFilename = formatLogFilename(
+              safeFilename,
+              nextDate,
+              currentFileIndex,
+            );
 
             // Rotate log file
             stream = await rotateLogFile(
               stream,
               logDirectory,
               safeFilename,
-              currentDate,
+              nextDate,
               retentionDays,
               archiveFormat,
               compressionLevel,
               archiveDirectory,
               cleanupOnRotation,
               archiveOnRotation,
+              normalizedMaxFiles,
             );
-            lastDate = currentDate;
+            currentDate = nextDate;
+            activeLogFilename = nextActiveFilename;
+            currentFileSize = getFileSizeSafe(getActiveLogPath());
           }
 
           // Add log entry to buffer
@@ -226,20 +327,17 @@ export default function fileTransport(options: FileTransportOptions) {
           // Flush any remaining buffer
           await handleFlushBuffer();
 
-          stream.end();
-          // Wait for the stream to finish
-          await new Promise((resolve) =>
-            stream.once('finish', () => resolve(undefined)),
-          );
+          await closeStream(stream);
 
           // Archive all log files in the directory
           await archiveLogFiles(
             logDirectory,
             safeFilename,
-            getCurrentDate(),
+            currentDate,
             archiveFormat,
             compressionLevel,
             archiveDirectory,
+            activeLogFilename,
           );
         } catch (error) {
           console.error('Error closing transport:', error);
@@ -261,4 +359,64 @@ function normalizeFilename(filename: string, fallback: string): string {
   }
 
   return base;
+}
+
+function formatLogFilename(
+  filename: string,
+  currentDate: string,
+  index: number,
+): string {
+  if (index <= 0) {
+    return `${filename}-${currentDate}.log`;
+  }
+
+  return `${filename}-${currentDate}-${index}.log`;
+}
+
+function getFileSizeSafe(filePath: string): number {
+  try {
+    return statSync(filePath).size;
+  } catch {
+    return 0;
+  }
+}
+
+function normalizeMaxFileSizeMB(value: number | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Number.isFinite(value) || value <= 0) {
+    console.warn('Invalid maxFileSizeMB value, size rotation disabled:', value);
+    return undefined;
+  }
+
+  return value;
+}
+
+function normalizeMaxFiles(value: number | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (!Number.isFinite(value) || value < 1) {
+    console.warn('Invalid maxFiles value, max files cleanup disabled:', value);
+    return undefined;
+  }
+
+  return Math.floor(value);
+}
+
+async function writeToStream(stream: Writable, value: string): Promise<void> {
+  const shouldDrain = !stream.write(value);
+  if (shouldDrain) {
+    await once(stream, 'drain');
+  }
+}
+
+async function closeStream(stream: Writable): Promise<void> {
+  stream.end();
+  await new Promise((resolve) => {
+    stream.once('finish', () => resolve(undefined));
+  });
 }

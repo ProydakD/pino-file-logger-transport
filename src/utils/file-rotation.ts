@@ -16,7 +16,10 @@ export async function rotateLogFile(
   archiveDirectory?: string,
   cleanupOnRotation: boolean = true,
   archiveOnRotation: boolean = false,
+  maxFiles?: number,
 ): Promise<Writable> {
+  const nextLogFilename = `${filename}-${currentDate}.log`;
+
   try {
     // Close current stream
     stream.end();
@@ -28,7 +31,14 @@ export async function rotateLogFile(
 
     // Clean up old files based on retentionDays if enabled
     if (cleanupOnRotation) {
-      cleanupOldFiles(logDirectory, filename, retentionDays, archiveDirectory);
+      cleanupOldFiles(
+        logDirectory,
+        filename,
+        retentionDays,
+        archiveDirectory,
+        maxFiles,
+        [nextLogFilename],
+      );
     }
     
     // Optionally archive old log files if enabled
@@ -40,6 +50,7 @@ export async function rotateLogFile(
         archiveFormat,
         compressionLevel,
         archiveDirectory,
+        nextLogFilename,
       );
     }
   } catch (error) {
@@ -47,10 +58,7 @@ export async function rotateLogFile(
   }
 
   // Create new stream with new date
-  const newLogFilePath = join(
-    logDirectory,
-    `${filename}-${currentDate}.log`,
-  );
+  const newLogFilePath = join(logDirectory, nextLogFilename);
   
   return createLogFileStream(newLogFilePath);
 }

@@ -21,6 +21,7 @@ export async function archiveLogFiles(
   archiveFormat: ArchiveFormat = 'zip',
   compressionLevel: number = 6,
   archiveDirectory?: string,
+  activeLogFilename?: string,
 ): Promise<void> {
   try {
     // Check if log directory exists
@@ -37,7 +38,8 @@ export async function archiveLogFiles(
       (file) =>
         file.startsWith(filename) &&
         file.endsWith('.log') &&
-        file !== `${filename}-${currentDate}.log`, // Don't archive current file
+        file !== `${filename}-${currentDate}.log` && // Don't archive current file
+        file !== activeLogFilename, // Don't archive active indexed file
     );
 
     // Archive each log file
