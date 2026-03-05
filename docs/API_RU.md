@@ -21,6 +21,8 @@
 | `archiveDirectory` | `string` | same as `logDirectory` | Директория для хранения архивов |
 | `cleanupOnRotation` | `boolean` | `true` | Очистка старых файлов при ротации |
 | `archiveOnRotation` | `boolean` | `false` | Архивация файлов при ротации |
+| `maxFileSizeMB` | `number` | отключено | Ротация файла текущего дня при достижении лимита размера |
+| `maxFiles` | `number` | отключено | Максимум управляемых файлов на директорию |
 
 ## Основные функции
 
@@ -48,19 +50,21 @@
 
 Удаляет старые лог файлы и архивы.
 
-### `filterRelevantFiles()`
+### Ротация по размеру
 
-Фильтрует файлы по шаблону именования.
+При включении `maxFileSizeMB` используются индексные файлы:
 
-### `extractDateFromFilename()`
-
-Извлекает дату из имени файла.
+- `filename-YYYY-MM-DD.log` (первый файл дня)
+- `filename-YYYY-MM-DD-1.log`
+- `filename-YYYY-MM-DD-2.log`
 
 ## Форматы файлов
 
 ### Лог файлы
 ```
 filename-YYYY-MM-DD.log
+filename-YYYY-MM-DD-1.log
+filename-YYYY-MM-DD-2.log
 ```
 
 ### Архивы

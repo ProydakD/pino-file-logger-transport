@@ -10,7 +10,7 @@
       <img src="https://img.shields.io/npm/dm/pino-file-logger-transport.svg?style=flat-square" alt="npm downloads">
     </a>
     <a href="https://github.com/ProydakD/pino-file-logger-transport/blob/master/LICENSE">
-      <img src="https://img.shdlabs.io/npm/l/pino-file-logger-transport.svg?style=flat-square" alt="license">
+      <img src="https://img.shields.io/npm/l/pino-file-logger-transport.svg?style=flat-square" alt="license">
     </a>
     <br>
     <strong>English</strong> | <a href="./README_RU.md">Русский</a>
@@ -19,7 +19,7 @@
 
 ## 🚀 Features
 
-- **Smart Log Rotation** - Automatic daily log file rotation with customizable naming
+- **Smart Log Rotation** - Automatic daily and size-based log rotation with customizable naming
 - **Intelligent Archiving** - Archive old logs in ZIP, GZIP, or TAR formats
 - **Configurable Retention** - Automatic cleanup of old logs based on retention policy
 - **High Performance** - Buffered writes and async I/O for optimal performance
@@ -93,6 +93,12 @@ const transport = pino.transport({
     
     // Optional: Buffer size for performance (default: 100)
     bufferSize: 50,
+
+    // Optional: Rotate file when size is reached in MB (disabled by default)
+    maxFileSizeMB: 50,
+
+    // Optional: Maximum managed files per directory (disabled by default)
+    maxFiles: 100,
   },
 });
 
