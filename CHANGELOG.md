@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Для новой линейки зафиксирован минимум `Node.js >= 20`.
 * CI обновлён до матрицы `Node 20/22/24` × `pino 9/10`.
 
+### BREAKING CHANGES
+
+* Минимальная поддерживаемая версия Node.js для линейки `2.x` — `>=20`.
+
 ### [1.4.5](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.4...v1.4.5) (2025-12-25)
 
 ### [1.4.4](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.3...v1.4.4) (2025-12-25)
