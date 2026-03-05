@@ -3,33 +3,116 @@ import type { LogLevel } from '../types';
 /**
  * Pino log entry interface
  */
-
 export interface PinoLogEntry {
-  level: number;
-  time: number;
-  pid: number;
-  hostname: string;
-  msg: string;
+  level?: number | string | { value?: number | string; label?: string };
+  time?: number;
+  pid?: number;
+  hostname?: string;
+  msg?: string;
+  log?: {
+    level?: number | string | { value?: number | string; label?: string };
+    [key: string]: unknown;
+  };
+  record?: {
+    level?: number | string | { value?: number | string; label?: string };
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
+const LEVEL_TO_NUMBER: Record<Exclude<LogLevel, 'silent'>, number> = {
+  trace: 10,
+  debug: 20,
+  info: 30,
+  warn: 40,
+  error: 50,
+  fatal: 60,
+};
+
 /**
- * Gets the numeric value of a log level
+ * Gets the numeric value of a configured level.
  *
- * @param level - Log level string
- * @returns Numeric value of the log level (higher means more verbose)
+ * @param level - Configured log level
+ * @returns Pino numeric level value
  */
-function getLevelValue(level: LogLevel): number {
-  switch (level) {
-    case 'silent': return 0;
-    case 'fatal': return 1;
-    case 'error': return 2;
-    case 'warn': return 3;
-    case 'info': return 4;
-    case 'debug': return 5;
-    case 'trace': return 6;
-    default: return 4; // Default to info level
+function getConfiguredLevelValue(level: LogLevel): number {
+  if (level === 'silent') {
+    return Number.POSITIVE_INFINITY;
   }
+
+  return LEVEL_TO_NUMBER[level];
+}
+
+/**
+ * Tries to normalize level candidate to pino numeric level value.
+ *
+ * @param candidate - Level candidate from log entry
+ * @returns Numeric level or null
+ */
+function normalizeLevelCandidate(candidate: unknown): number | null {
+  if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+    return candidate;
+  }
+
+  if (typeof candidate === 'string') {
+    const normalized = candidate.trim().toLowerCase();
+    if (!normalized) {
+      return null;
+    }
+
+    if (normalized in LEVEL_TO_NUMBER) {
+      return LEVEL_TO_NUMBER[normalized as Exclude<LogLevel, 'silent'>];
+    }
+
+    const parsed = Number(normalized);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extracts level value from known entry fields.
+ *
+ * @param obj - Log entry object
+ * @returns Numeric level value
+ */
+function extractLogLevelValue(obj: PinoLogEntry): number {
+  const candidates: unknown[] = [
+    obj.level,
+    typeof obj.level === 'object' && obj.level !== null
+      ? (obj.level as { value?: unknown; label?: unknown }).value
+      : null,
+    typeof obj.level === 'object' && obj.level !== null
+      ? (obj.level as { value?: unknown; label?: unknown }).label
+      : null,
+    obj.log?.level,
+    typeof obj.log?.level === 'object' && obj.log?.level !== null
+      ? (obj.log.level as { value?: unknown; label?: unknown }).value
+      : null,
+    typeof obj.log?.level === 'object' && obj.log?.level !== null
+      ? (obj.log.level as { value?: unknown; label?: unknown }).label
+      : null,
+    obj.record?.level,
+    typeof obj.record?.level === 'object' && obj.record?.level !== null
+      ? (obj.record.level as { value?: unknown; label?: unknown }).value
+      : null,
+    typeof obj.record?.level === 'object' && obj.record?.level !== null
+      ? (obj.record.level as { value?: unknown; label?: unknown }).label
+      : null,
+  ];
+
+  for (const candidate of candidates) {
+    const levelValue = normalizeLevelCandidate(candidate);
+    if (levelValue !== null) {
+      return levelValue;
+    }
+  }
+
+  // Default to info level if level is missing/invalid.
+  return LEVEL_TO_NUMBER.info;
 }
 
 /**
@@ -43,26 +126,14 @@ export function shouldWriteLog(
   obj: PinoLogEntry,
   configuredLevel: LogLevel,
 ): boolean {
-  // If configured level is silent, don't write anything
+  // If configured level is silent, don't write anything.
   if (configuredLevel === 'silent') {
     return false;
   }
 
-  // Extract level from log entry (default to 'info' if not specified)
-  const logLevel = obj.level ? obj.level : 30; // 30 is info level in Pino
-  
-  // Convert Pino numeric levels to string levels for comparison
-  let logLevelStr: LogLevel;
-  switch (logLevel) {
-    case 10: logLevelStr = 'trace'; break;
-    case 20: logLevelStr = 'debug'; break;
-    case 30: logLevelStr = 'info'; break;
-    case 40: logLevelStr = 'warn'; break;
-    case 50: logLevelStr = 'error'; break;
-    case 60: logLevelStr = 'fatal'; break;
-    default: logLevelStr = 'info';
-  }
+  const configuredLevelValue = getConfiguredLevelValue(configuredLevel);
+  const entryLevelValue = extractLogLevelValue(obj);
 
-  // Compare levels
-  return getLevelValue(logLevelStr) <= getLevelValue(configuredLevel);
+  // In pino, higher level number means higher severity.
+  return entryLevelValue >= configuredLevelValue;
 }
