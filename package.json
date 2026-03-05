@@ -1,14 +1,20 @@
 {
   "name": "pino-file-logger-transport",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "A Pino transport for file logging with rotation and archiving capabilities",
   "keywords": [
     "pino",
-    "logger",
-    "transport",
-    "file",
-    "rotation",
-    "archive"
+    "pino-transport",
+    "pino-file-transport",
+    "pino-file",
+    "pino-logger",
+    "file-logger",
+    "log-rotation",
+    "file-rotation",
+    "log-archive",
+    "log-retention",
+    "structured-logging",
+    "nodejs-logging"
   ],
   "author": "Dmitriy Proydak <proydak@gmail.com>",
   "license": "MIT",
