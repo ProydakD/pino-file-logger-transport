@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0](https://github.com/ProydakD/pino-file-logger-transport/compare/v2.0.3...v2.1.0) (2026-03-05)
+
+
+### Changed
+
+* добавлена проверка содержимого пакета в CI ([53fa1d4](https://github.com/ProydakD/pino-file-logger-transport/commit/53fa1d4a8e23c73784e29df594427f2805becb0f))
+* обновлена документация и README файлы для улучшенной функциональности ротации логов ([fdc854a](https://github.com/ProydakD/pino-file-logger-transport/commit/fdc854a4b9df3ef969353daaba8e3f63cb0cb749))
+* обновлена документация с информацией о версии для опций ротации ([8258275](https://github.com/ProydakD/pino-file-logger-transport/commit/825827526ea75dbfa9941b9b89f527d9998348d9))
+* скорректирован URL репозитория в package.json ([81d12bc](https://github.com/ProydakD/pino-file-logger-transport/commit/81d12bc0292a677f4debc24cd2fad5aea8f63785))
+
 ### [2.0.3](https://github.com/ProydakD/pino-file-logger-transport/compare/v2.0.2...v2.0.3) (2026-03-05)
 
 ## [2.0.2](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.5...v2.0.2) (2026-03-05)
