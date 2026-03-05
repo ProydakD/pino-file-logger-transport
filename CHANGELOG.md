@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - Unreleased
+
+### Changed
+
+* Добавлена официальная совместимость с `pino@10` (и сохранена поддержка `pino@9`).
+* Обновлён `peerDependencies.pino` до `^9.14.0 || ^10.0.0`.
+* Обновлены зависимости transport-стека (`pino-abstract-transport@^3` и связанные пакеты).
+* Для новой линейки зафиксирован минимум `Node.js >= 20`.
+* CI обновлён до матрицы `Node 20/22/24` × `pino 9/10`.
+
 ### [1.4.5](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.4...v1.4.5) (2025-12-25)
 
 ### [1.4.4](https://github.com/ProydakD/pino-file-logger-transport/compare/v1.4.3...v1.4.4) (2025-12-25)
