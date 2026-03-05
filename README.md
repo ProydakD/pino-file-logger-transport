@@ -33,6 +33,23 @@
 npm install pino-file-logger-transport
 ```
 
+## ✅ Compatibility
+
+| Package line | Node.js | Pino |
+|--------------|---------|------|
+| `1.x` | `>=16` | `^9` |
+| `2.x` | `>=20` | `^9.14.0 \|\| ^10.0.0` |
+
+## 🔄 Migration Notes
+
+- If your project is on Node.js 18, stay on `1.x`:
+
+```bash
+npm install pino-file-logger-transport@^1
+```
+
+- Use `2.x` for Node.js 20+ and official `pino@10` support.
+
 ## 🎯 Quick Start
 
 ```javascript

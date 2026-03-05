@@ -7,6 +7,13 @@
 3. [API Reference](API.md) - Complete API documentation
 4. [Architecture](ARCHITECTURE.md) - Internal architecture and design
 
+## Compatibility
+
+| Package line | Node.js | Pino |
+|--------------|---------|------|
+| `1.x` | `>=16` | `^9` |
+| `2.x` | `>=20` | `^9.14.0 \|\| ^10.0.0` |
+
 ## Quick Start
 
 ```javascript
