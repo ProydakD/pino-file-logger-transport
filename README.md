@@ -49,6 +49,7 @@ npm install pino-file-logger-transport@^1
 ```
 
 - Use `2.x` for Node.js 20+ and official `pino@10` support.
+- Size-based rotation options (`maxFileSizeMB`, `maxFiles`) are available starting from `2.1.0`.
 
 ## 🎯 Quick Start
 
@@ -94,10 +95,10 @@ const transport = pino.transport({
     // Optional: Buffer size for performance (default: 100)
     bufferSize: 50,
 
-    // Optional: Rotate file when size is reached in MB (disabled by default)
+    // Optional: Rotate file when size is reached in MB (disabled by default, since 2.1.0)
     maxFileSizeMB: 50,
 
-    // Optional: Maximum managed files per directory (disabled by default)
+    // Optional: Maximum managed files per directory (disabled by default, since 2.1.0)
     maxFiles: 100,
   },
 });

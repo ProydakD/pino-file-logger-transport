@@ -21,8 +21,8 @@ Interface for transport configuration options.
 | `archiveDirectory` | `string` | same as `logDirectory` | Directory for storing archives |
 | `cleanupOnRotation` | `boolean` | `true` | Clean up old files on rotation |
 | `archiveOnRotation` | `boolean` | `false` | Archive files on rotation |
-| `maxFileSizeMB` | `number` | disabled | Rotate current day file when size limit is reached |
-| `maxFiles` | `number` | disabled | Maximum managed files per directory |
+| `maxFileSizeMB` | `number` | disabled | Rotate current day file when size limit is reached (since `2.1.0`) |
+| `maxFiles` | `number` | disabled | Maximum managed files per directory (since `2.1.0`) |
 
 ## Main Functions
 
@@ -52,7 +52,7 @@ Deletes old log files and archives.
 
 ### Size-based rotation
 
-When `maxFileSizeMB` is enabled, indexed files are used:
+When `maxFileSizeMB` is enabled (since `2.1.0`), indexed files are used:
 
 - `filename-YYYY-MM-DD.log` (first file of the day)
 - `filename-YYYY-MM-DD-1.log`
